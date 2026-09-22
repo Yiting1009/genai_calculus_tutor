@@ -11,7 +11,7 @@ import re
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -19,11 +19,14 @@ from . import (
     analytics,
     assignments,
     config,
+    database,
     generator,
     guardrail,
     learning_path,
     problems,
     rag,
+    question_pool,
+    recommendations,
     socratic,
     store,
     textbook,
@@ -44,6 +47,7 @@ from .schemas import (
     GradeRequest,
     GradeResponse,
     LearningStep,
+    LearningRecommendation,
     MessageRequest,
     ProblemPublic,
     SessionState,
@@ -55,6 +59,7 @@ from .schemas import (
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    database.initialize()
     try:
         rag.warmup()
     except Exception:
@@ -137,6 +142,15 @@ def get_learning_path():
     return learning_path.load_path()
 
 
+@app.get("/learning/recommendation", response_model=LearningRecommendation)
+def get_learning_recommendation(
+    student_id: str = Query(min_length=1),
+    class_id: str | None = None,
+    current_topic: str | None = None,
+):
+    return recommendations.recommend(student_id.strip(), class_id, current_topic)
+
+
 # --------------------------------------------------------------------------- #
 # Teacher analytics (class-level)
 # --------------------------------------------------------------------------- #
@@ -176,12 +190,16 @@ def delete_assignment(assignment_id: str):
 
 
 @app.post("/generate", response_model=GeneratedQuestionPublic)
-def generate(req: GenerateRequest):
+def generate(req: GenerateRequest, background_tasks: BackgroundTasks):
     try:
-        return generator.generate_question(
-            req.type, req.topic, req.difficulty, language=req.language,
-            exclude_stems=req.exclude_stems,
+        question = question_pool.get_or_generate(
+            req.type, req.topic, req.difficulty, req.language, req.exclude_stems,
         )
+        background_tasks.add_task(
+            question_pool.refill,
+            req.type, req.topic, req.difficulty, req.language, 2,
+        )
+        return question
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Unknown section") from exc
     except Exception as exc:  # noqa: BLE001

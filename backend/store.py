@@ -11,7 +11,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-from . import config
+from . import config, database
 from .schemas import Condition, Language, Problem
 
 
@@ -83,6 +83,8 @@ def log_practice(payload: dict) -> None:
 def log_activity(event: str, payload: dict) -> None:
     """Append a student activity event to the shared JSONL stream."""
     record = {"ts": time.time(), "event": event, **payload}
+    if config.LOG_DIR == config.DATA_DIR / "logs":
+        record = database.append_event(record)
     path = config.LOG_DIR / "practice.jsonl"
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -170,6 +172,8 @@ def _log(session: Session, payload: dict) -> None:
         "class_id": session.class_id,
         **payload,
     }
+    if config.LOG_DIR == config.DATA_DIR / "logs":
+        record = database.append_event(record)
     path = config.LOG_DIR / f"{session.session_id}.jsonl"
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")

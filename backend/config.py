@@ -20,6 +20,7 @@ TEXTBOOK_ASSETS_DIR = TEXTBOOK_DIR / "parsed"
 TEXTBOOK_PDF_DIR = TEXTBOOK_DIR / "pdfs"
 LEARNING_PATH_FILE = DATA_DIR / "learning_path.json"
 ASSIGNMENTS_FILE = DATA_DIR / "assignments.json"
+APP_DB_FILE = DATA_DIR / "calculus_tutor.sqlite3"
 
 load_dotenv(ROOT_DIR / ".env")
 
@@ -50,7 +51,7 @@ RAG_EMBEDDING_MODEL_DIR = (
 RAG_TOP_K = int(os.getenv("RAG_TOP_K", "4"))
 RAG_MAX_CONTEXT_CHARS = int(os.getenv("RAG_MAX_CONTEXT_CHARS", "4500"))
 TEXTBOOK_EXERCISE_RATIO = min(
-    1.0, max(0.0, float(os.getenv("TEXTBOOK_EXERCISE_RATIO", "0.5")))
+    1.0, max(0.0, float(os.getenv("TEXTBOOK_EXERCISE_RATIO", "1.0")))
 )
 
 # Stable IDs are logged and stored; labels are only for display. Replace these

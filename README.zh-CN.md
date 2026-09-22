@@ -54,8 +54,8 @@ GenAI_Calculus_Tutor/
 ├── data/
 │   ├── problems.json  # 12 道种子 Calc 1 题（助教也会用）
 │   ├── eval/          # 安全与评测固定样例
-│   ├── textbook/      # MIT 元数据、PDF、人工校验内容与解析资源
-│   ├── chroma/        # 本地生成的向量索引（不提交）
+│   ├── textbook/      # MIT 元数据、PDF、人工校验内容与运行时插图
+│   ├── chroma/        # 仓库自带、可直接使用的 MIT 向量索引
 │   └── logs/          # 每会话 JSONL 日志（已 gitignore）
 ├── scripts/           # 冒烟/API/生成 测试 + 分析
 ├── requirements.txt
@@ -72,16 +72,12 @@ GenAI_Calculus_Tutor/
 pip install -r requirements.txt
 ```
 
-2. 解析 MIT Fall 2017 章节 PDF，并建立 Chroma 索引：
+2. 不需要重新构建 RAG。仓库已经包含 MIT Calculus 八章的可用 Chroma
+快照和网页运行所需的教材插图，后端启动时会自动验证索引。
 
-```bash
-mineru -p data/textbook/mit-calculus/pdfs -o data/textbook/mit-calculus/parsed -b pipeline -m txt -f false -t true
-python -m scripts.build_mit_toc --write
-python -m scripts.ingest_mit --chapters 1 2 3 4 5 6 7 8
-```
-
-仓库已包含八章 PDF 和人工校验后的元数据。MinerU 解析结果与 Chroma 索引属于本地运行
-产物；如果 embedding 模型不在默认位置，请配置 `RAG_EMBEDDING_MODEL_DIR`。
+首次进行语义检索时，sentence-transformer 模型会自动下载并缓存在本机。
+如需完全离线运行，可将兼容模型放入 `data/models/all-MiniLM-L6-v2`，或配置
+`RAG_EMBEDDING_MODEL_DIR`。
 
 3. 配置凭据：把 `.env.example` 复制为 `.env`，填入你的 key：
 
@@ -138,6 +134,7 @@ http://localhost:8501/?instructor=1
 | `GET` | `/retrieve` | 检索结果调试/老师接口 |
 | `POST` | `/generate` | 生成题目（类型/主题/难度） |
 | `POST` | `/grade` | 自动判分 |
+| `GET` | `/learning/recommendation` | 根据学习记录推荐下一步 |
 | `GET` | `/problems` | 公开种子题列表（不含答案） |
 | `POST` | `/session/start` | 创建助教会话（种子题或生成题 id） |
 | `POST` | `/session/{sid}/message` | 发送学生消息，返回助教回合 |
@@ -168,6 +165,9 @@ python -m scripts.test_generation  # 四种题型的生成 + 判分
 
 每一轮都会记录到 `data/logs/<session_id>.jsonl`。把日志变成对比表格与图表：
 
+运行时会自动创建 `data/calculus_tutor.sqlite3`，不需要安装或启动独立数据库。它保存学生
+学习事件和预生成题目缓存；学生提交答案后，教师端会按班级读取同一组记录并更新知识点统计。
+
 ```bash
 python -m scripts.seed_sessions   # 可选：生成演示会话（后端需在跑）
 python -m scripts.analyze_logs    # 生成 reports/ 表格与图
@@ -185,16 +185,18 @@ python -m scripts.analyze_logs    # 生成 reports/ 表格与图
 
 **已实现（v0.4）：** MIT Calculus 第 1–8 章单一 Chroma collection、按 metadata 检索
 concept/example、已验证教材题与四类 RAG 出题、带引用的苏格拉底 Tutor、答错不泄露答案的
-服务端判分、Explain-to-unlock、中英文护栏、JSONL 事件日志、确定性测试与评测脚本。
+服务端判分、Explain-to-unlock、中英文护栏、持久化预生成题池、个性化下一步推荐、
+SQLite/JSONL 学习事件以及确定性测试与评测脚本。
 
 **路线图（尚未实现）：** 生成数学内容的符号验算、持久化会话、经过验证的 BKT/DKT 学生
-模型、多模态输入、聚合教师面板、自适应推荐和 LTI 集成。
+模型、多模态输入和 LTI 集成。
 
 ## 教材授权与署名
 
 知识片段来自 Gilbert Strang 编写、MIT OpenCourseWare 提供的 *Calculus*，采用
 CC BY-NC-SA 4.0 许可。本项目使用 Fall 2017 的第 1–8 章 PDF 资源；每个索引片段保留
-章节、小节、页码、图片、来源和署名信息。解析资源和生成索引不提交到仓库。
+章节、小节、页码、图片、来源和署名信息。审核后的运行时插图和可直接使用的 Chroma
+快照会随仓库提交，因此全新克隆无需重新构建 RAG 数据。
 
 ## 演示与简历表述
 

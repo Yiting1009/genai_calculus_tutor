@@ -1,6 +1,6 @@
 /* ------------------------------------------------------------------
    API layer — talks to the existing FastAPI backend.
-   In dev, Vite proxies /api -> http://localhost:8000 (see vite.config.js).
+   In dev, Vite proxies /api -> http://127.0.0.1:8000 (see vite.config.js).
    If the backend is unreachable, we fall back to demo data so the UI
    still renders — controlled by the returned `._mock` flag.
 
@@ -218,6 +218,12 @@ export const api = {
   getCatalog: () =>
     withFallback(async () => await req('/catalog'), MOCK.catalog),
 
+  getLearningRecommendation: (studentId, classId, currentTopic) => {
+    const params = new URLSearchParams({ student_id: studentId, current_topic: currentTopic })
+    if (classId) params.set('class_id', classId)
+    return req('/learning/recommendation?' + params.toString())
+  },
+
   // GET /concept?topic= -> ConceptCard (503 when RAG index not ready)
   getConcept: (topic) =>
     withFallback(async () => await req('/concept?topic=' + encodeURIComponent(topic)), MOCK.concept(topic)),
@@ -250,17 +256,14 @@ export const api = {
 
   // GET /favorites?student_id= -> [Favorite]
   getFavorites: (studentId) =>
-    withFallback(
-      async () => ({ favorites: await req('/favorites?student_id=' + encodeURIComponent(studentId)) }),
-      { favorites: MOCK.favorites },
-    ),
+    req('/favorites?student_id=' + encodeURIComponent(studentId))
+      .then((favorites) => ({ favorites })),
 
   // POST /favorites { student_id, class_id, question_id } -> Favorite
   addFavorite: (body) =>
-    req('/favorites', { method: 'POST', body: JSON.stringify(body) }).catch(() => ({ ...body, _mock: true })),
+    req('/favorites', { method: 'POST', body: JSON.stringify(body) }),
 
   // DELETE /favorites/{qid}?student_id=
   deleteFavorite: (questionId, studentId) =>
-    req(`/favorites/${questionId}?student_id=` + encodeURIComponent(studentId), { method: 'DELETE' })
-      .catch(() => ({ removed: true, _mock: true })),
+    req(`/favorites/${questionId}?student_id=` + encodeURIComponent(studentId), { method: 'DELETE' }),
 }

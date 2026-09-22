@@ -1,19 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
+import { ClipboardPlus, LayoutDashboard } from 'lucide-react'
 import { useLang } from './i18n.jsx'
 import Overview from './pages/Overview.jsx'
-import Diagnose from './pages/Diagnose.jsx'
 import Assign from './pages/Assign.jsx'
-import Assistant from './pages/Assistant.jsx'
+import FloatingTeacherAssistant from './pages/FloatingTeacherAssistant.jsx'
 import StudentApp from './pages/StudentApp.jsx'
 import { api } from './api.js'
 import { TeacherClassContext } from './components/TeacherClass.jsx'
 
 const NAV = [
-  { to: '/overview',  key: 'nav_overview',  ic: '📊', group: 'main' },
-  { to: '/diagnose',  key: 'nav_diagnose',  ic: '🔬', group: 'main' },
-  { to: '/assign',    key: 'nav_assign',    ic: '📝', group: 'tools' },
-  { to: '/assistant', key: 'nav_assistant', ic: '💬', group: 'tools' },
+  { to: '/overview', key: 'nav_overview', icon: LayoutDashboard },
+  { to: '/assign', key: 'nav_assign', icon: ClipboardPlus },
 ]
 
 function useTheme() {
@@ -27,9 +25,7 @@ function useTheme() {
 
 const TITLES = {
   '/overview': 'overview_title',
-  '/diagnose': 'diagnose_title',
   '/assign': 'assign_title',
-  '/assistant': 'assistant_title',
 }
 
 /* Shared footer controls: role switch + theme + language. */
@@ -80,6 +76,7 @@ function TeacherApp({ controls }) {
   const { t, lang } = useLang()
   const [classId, setClassId] = useState('')
   const [classes, setClasses] = useState([])
+  const [assistantOpen, setAssistantOpen] = useState(false)
   useEffect(() => { api.getClasses().then(res => setClasses(Array.isArray(res) ? res : res.classes || [])) }, [])
   const loc = useLocation()
   const titleKey = TITLES[loc.pathname] || 'app_title'
@@ -103,16 +100,9 @@ function TeacherApp({ controls }) {
             {classes.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
         </label>
-        {NAV.filter((n) => n.group === 'main').map((n) => (
+        {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
-            <span className="ic">{n.ic}</span>{t(n.key)}
-          </NavLink>
-        ))}
-
-        <div className="nav-group-label">{t('nav_group_tools')}</div>
-        {NAV.filter((n) => n.group === 'tools').map((n) => (
-          <NavLink key={n.to} to={n.to} className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
-            <span className="ic">{n.ic}</span>{t(n.key)}
+            <span className="ic"><n.icon size={18} strokeWidth={2} /></span>{t(n.key)}
           </NavLink>
         ))}
 
@@ -133,14 +123,17 @@ function TeacherApp({ controls }) {
           <Routes>
             <Route path="/" element={<Navigate to="/overview" replace />} />
             <Route path="/overview" element={<Overview />} />
-            <Route path="/diagnose" element={<Diagnose />} />
             <Route path="/assign" element={<Assign />} />
-            <Route path="/assistant" element={<Assistant />} />
+            <Route path="/diagnose" element={<Navigate to="/overview" replace />} />
+            <Route path="/assistant" element={<Navigate to="/overview" replace />} />
             <Route path="*" element={<Navigate to="/overview" replace />} />
           </Routes>
         </div>
         </TeacherClassContext.Provider>
       </main>
+      <FloatingTeacherAssistant open={assistantOpen}
+        onOpen={() => setAssistantOpen(true)} onClose={() => setAssistantOpen(false)}
+        classId={classId} classLabel={classes.find((item) => item.id === classId)?.label || t('teacher_ai_all_classes')} />
     </div>
   )
 }

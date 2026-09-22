@@ -4,7 +4,7 @@ import { api } from '../../api.js'
 import { Card, Loading, MockPill } from '../../components/ui.jsx'
 import { Formula, MathText } from '../../components/math.jsx'
 
-export default function Concept({ topic, onAskTutor, onStartPractice }) {
+export default function Concept({ topic, onStartPractice }) {
   const { t } = useLang()
   const [loading, setLoading] = useState(true)
   const [card, setCard] = useState(null)
@@ -84,7 +84,6 @@ export default function Concept({ topic, onAskTutor, onStartPractice }) {
       </Card>
 
       <div className="cta-bar">
-        <button className="btn" onClick={onAskTutor}>💬 {t('concept_ask_tutor')}</button>
         <div className="spacer" />
         <button className="btn primary" onClick={onStartPractice}>{t('concept_start_practice')} →</button>
       </div>

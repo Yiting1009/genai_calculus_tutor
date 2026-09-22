@@ -1,7 +1,7 @@
 import { useLang } from '../../i18n.jsx'
 import { Card, Badge, Empty } from '../../components/ui.jsx'
 
-export default function Favorites({ favorites, onRemove, onPractice, onBack }) {
+export default function Favorites({ favorites, error, onRemove, onPractice, onBack }) {
   const { t } = useLang()
   const diffLabel = (d) => t('diff_' + d)
   const qtypeLabel = (x) => t('qtype_' + x)
@@ -15,6 +15,8 @@ export default function Favorites({ favorites, onRemove, onPractice, onBack }) {
         </div>
         <button className="btn" onClick={onBack}>{t('stu_back_learning')}</button>
       </div>
+
+      {error && <div role="alert" className="grade-box bad">{error}</div>}
 
       {favorites.length === 0 ? (
         <Card><Empty icon="⭐">{t('fav_empty')}</Empty></Card>

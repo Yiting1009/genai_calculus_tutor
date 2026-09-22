@@ -238,6 +238,12 @@ def _public(record: Dict[str, Any]) -> GeneratedQuestionPublic:
     return GeneratedQuestionPublic(**kwargs)
 
 
+def restore(record: Dict[str, Any]) -> GeneratedQuestionPublic:
+    """Restore a persisted private question so it can be graded normally."""
+    _REGISTRY[record["id"]] = record
+    return _public(record)
+
+
 def _maybe_curated(
     qtype: QuestionType,
     section: dict[str, Any],

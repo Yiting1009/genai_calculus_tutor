@@ -8,7 +8,17 @@ from openai import OpenAI
 
 from . import config
 
-_client = OpenAI(base_url=config.LLM_BASE_URL, api_key=config.LLM_API_KEY)
+_client: OpenAI | None = None
+
+
+def _get_client() -> OpenAI:
+    """Connect lazily so local textbook features work without an API key."""
+    global _client
+    if _client is None:
+        if not config.LLM_API_KEY:
+            raise RuntimeError("LLM_API_KEY is not configured")
+        _client = OpenAI(base_url=config.LLM_BASE_URL, api_key=config.LLM_API_KEY)
+    return _client
 
 
 def chat(messages: List[Dict[str, str]], temperature: float = 0.4,
@@ -26,7 +36,7 @@ def chat(messages: List[Dict[str, str]], temperature: float = 0.4,
             )
             if response_format is not None:
                 kwargs["response_format"] = response_format
-            resp = _client.chat.completions.create(**kwargs)
+            resp = _get_client().chat.completions.create(**kwargs)
             return resp.choices[0].message.content or ""
         except Exception as exc:  # noqa: BLE001
             last_exc = exc

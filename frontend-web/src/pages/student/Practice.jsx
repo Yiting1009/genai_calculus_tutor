@@ -3,6 +3,7 @@ import { useLang } from '../../i18n.jsx'
 import { api } from '../../api.js'
 import { Card, Loading, MockPill, Badge } from '../../components/ui.jsx'
 import { MathText } from '../../components/math.jsx'
+import { getCachedQuestion, loadQuestion } from './questionCache.js'
 
 const QTYPES = ['single_choice', 'multiple_choice', 'fill_blank', 'drag_order']
 const DIFFS = ['easy', 'medium', 'hard']
@@ -11,7 +12,8 @@ export default function Practice({
   topic, difficulty, qtype, setDifficulty, setQtype,
   studentId, classId, lang,
   onBackConcept, onStuck, onExplainCorrect, onGetHint, onFirstStep,
-  favorites, onToggleFavorite,
+  favorites, favoriteError, onToggleFavorite,
+  onActivity,
 }) {
   const { t } = useLang()
   const [loading, setLoading] = useState(true)
@@ -20,18 +22,22 @@ export default function Practice({
   const [answer, setAnswer] = useState({})
   const [grade, setGrade] = useState(null)
   const [grading, setGrading] = useState(false)
+  const [favoriteSaving, setFavoriteSaving] = useState(false)
   const [error, setError] = useState(false)
-  const seen = useRef(new Map())
   const requestId = useRef(0)
 
-  const load = () => {
+  const load = (fresh = false) => {
     const id = ++requestId.current
-    const key = JSON.stringify([topic, qtype, difficulty, lang])
-    const previous = seen.current.get(key) || []
+    const params = { topic, type: qtype, difficulty, language: lang }
+    const cached = getCachedQuestion(params)
+    if (!fresh && cached) {
+      setGrade(null); setAnswer({}); setError(false)
+      setQ(cached); setMock(!!cached._mock); setLoading(false)
+      return
+    }
     setLoading(true); setError(false)
-    api.generateQuestion({ type: qtype, topic, difficulty, language: lang, exclude_stems: previous }).then((res) => {
+    loadQuestion(params, { fresh }).then((res) => {
       if (id !== requestId.current) return
-      seen.current.set(key, [...previous, res.stem].slice(-50))
       setGrade(null); setAnswer({})
       setQ(res); setMock(!!res._mock); setLoading(false)
     }).catch(() => {
@@ -48,12 +54,19 @@ export default function Practice({
 
   const isFav = q && favorites.some((f) => f.question_id === q.id)
 
+  const toggleFavorite = async () => {
+    if (!q || favoriteSaving) return
+    setFavoriteSaving(true)
+    await onToggleFavorite(q, isFav)
+    setFavoriteSaving(false)
+  }
+
   const submit = async () => {
     if (!q) return
     setGrading(true)
     const payload = { question_id: q.id, student_id: studentId || 'anon', class_id: classId, ...answer }
     const res = await api.gradeAnswer(payload)
-    setGrade(res); setGrading(false)
+    setGrade(res); setGrading(false); onActivity?.()
   }
 
   const diffLabel = (d) => t('diff_' + d)
@@ -93,8 +106,9 @@ export default function Practice({
 
       {error && <div role="alert" className="grade-box bad">
         {lang === 'zh' ? '暂时无法获取新题，可能是模型不可用或当前题库已练完。请重试或切换题型、难度。' : 'A new question is unavailable. The model may be unreachable or the available exercises exhausted. Retry or change the type or difficulty.'}
-        <button className="btn" onClick={load}>{lang === 'zh' ? '重试获取新题' : 'Retry new question'}</button>
+        <button className="btn" onClick={() => load(true)}>{lang === 'zh' ? '重试获取新题' : 'Retry new question'}</button>
       </div>}
+      {favoriteError && <div role="alert" className="grade-box bad">{favoriteError}</div>}
       {loading ? <Loading rows={2} /> : q && (
         <Card>
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -102,9 +116,8 @@ export default function Practice({
               <Badge level="neutral">{diffLabel(q.difficulty)}</Badge>
               <Badge level="neutral">{qtypeLabel(q.type)}</Badge>
             </div>
-            <button className="btn sm ghost" title={studentId ? '' : t('practice_need_name')}
-              disabled={!studentId} onClick={() => onToggleFavorite(q, isFav)}>
-              {isFav ? '★ ' + t('practice_unfavorite') : '☆ ' + t('practice_favorite')}
+            <button className="btn sm ghost" aria-pressed={isFav} disabled={favoriteSaving} onClick={toggleFavorite}>
+              {favoriteSaving ? t('practice_favorite_saving') : isFav ? '★ ' + t('practice_unfavorite') : '☆ ' + t('practice_favorite')}
             </button>
           </div>
 
@@ -147,7 +160,7 @@ export default function Practice({
         {grade?.correct ? (
           <>
             <button className="btn" onClick={() => onExplainCorrect(q)}>{t('practice_explain_correct')}</button>
-            <button className="btn primary" onClick={load}>{t('practice_next')} →</button>
+            <button className="btn primary" onClick={() => load(true)}>{t('practice_next')} →</button>
           </>
         ) : grade ? (
           <>

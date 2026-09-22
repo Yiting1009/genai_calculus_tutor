@@ -57,8 +57,8 @@ GenAI_Calculus_Tutor/
 ├── data/
 │   ├── problems.json  # 12 seed Calc 1 problems (used by the tutor too)
 │   ├── eval/          # deterministic safety/evaluation fixtures
-│   ├── textbook/      # MIT metadata, PDFs, curated content and parsed assets
-│   ├── chroma/        # generated vector index (gitignored)
+│   ├── textbook/      # MIT metadata, PDFs, curated content and runtime figures
+│   ├── chroma/        # packaged, ready-to-use MIT vector index
 │   └── logs/          # per-session JSONL logs (gitignored)
 ├── scripts/           # smoke / api / generation tests + analysis, seeding + log analysis
 ├── reports/           # generated tables + figures (gitignored)
@@ -76,18 +76,13 @@ GenAI_Calculus_Tutor/
 pip install -r requirements.txt
 ```
 
-2. Parse the MIT Fall 2017 chapter PDFs and build the Chroma index:
+2. No RAG build step is required. The repository includes a ready-to-use
+Chroma snapshot for all eight MIT Calculus chapters plus the runtime textbook
+figures. The backend validates this snapshot on startup.
 
-```bash
-mineru -p data/textbook/mit-calculus/pdfs -o data/textbook/mit-calculus/parsed -b pipeline -m txt -f false -t true
-python -m scripts.build_mit_toc --write
-python -m scripts.ingest_mit --chapters 1 2 3 4 5 6 7 8
-```
-
-The repository already contains the eight chapter PDFs and curated metadata.
-MinerU output and the generated Chroma index are local artifacts. Configure
-`RAG_EMBEDDING_MODEL_DIR` if the embedding model is stored outside its default
-location.
+The sentence-transformer is downloaded automatically on the first semantic
+retrieval and cached locally. To run fully offline, place a compatible model at
+`data/models/all-MiniLM-L6-v2` or configure `RAG_EMBEDDING_MODEL_DIR`.
 
 3. Configure credentials. Copy `.env.example` to `.env` and fill in your key:
 
@@ -150,6 +145,7 @@ http://localhost:8501/?instructor=1
 | `GET` | `/retrieve` | attributed retrieval results (debug/instructor) |
 | `POST` | `/generate` | generate a question (type/topic/difficulty) |
 | `POST` | `/grade` | auto-grade a submitted answer |
+| `GET` | `/learning/recommendation` | recommend the learner's next step |
 | `GET` | `/problems` | public seed problem list (no answers) |
 | `POST` | `/session/start` | create a tutor session (seed or generated id) |
 | `POST` | `/session/{sid}/message` | send a student message, get tutor turn |
@@ -181,6 +177,11 @@ python -m scripts.test_generation  # generate + grade all four question types
 Every turn is logged to `data/logs/<session_id>.jsonl`. To turn those logs into
 comparison tables and charts:
 
+The app automatically creates `data/calculus_tutor.sqlite3`; no separate
+database service or installation is required. It stores learning events and the
+pre-generated question pool. Student submissions feed the teacher's class-level
+topic statistics through the same backend.
+
 ```bash
 python -m scripts.seed_sessions   # OPTIONAL: generate demo sessions (backend up)
 python -m scripts.analyze_logs    # build reports/ tables + figures
@@ -204,18 +205,20 @@ keeps the explain-vs-control comparison fair.
 metadata-filtered concept/example retrieval, verified textbook exercises plus
 RAG-grounded generation in four formats, cited Socratic tutoring, server-side
 grading without wrong-answer leakage, explain-to-unlock, bilingual guardrails,
-JSONL events, deterministic tests, and an evaluation script.
+a persistent pre-generated question pool, adaptive next-step recommendations,
+SQLite/JSONL learning events, deterministic tests, and an evaluation script.
 
 **Roadmap (not implemented):** symbolic verification of generated mathematics,
 persistent sessions, validated student models (BKT/DKT), multimodal input,
-aggregate instructor analytics, adaptive recommendation, and LTI integration.
+and LTI integration.
 
 ## Textbook attribution
 
 Textbook excerpts come from Gilbert Strang's *Calculus*, provided by MIT
 OpenCourseWare under CC BY-NC-SA 4.0. This project uses the Fall 2017 Chapter
 1–8 PDF resources. Indexed chunks retain chapter, section, page, figure, source,
-and attribution metadata. Generated parsed assets and indexes are not committed.
+and attribution metadata. The reviewed runtime figures and ready-to-use Chroma
+snapshot are committed so a fresh clone does not need to rebuild the RAG data.
 
 ## Demo and resume wording
 

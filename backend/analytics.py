@@ -91,6 +91,37 @@ def compute(class_id: str | None = None) -> ClassAnalytics:
     result.practice = [{"session": topic, "total": len(rows),
                         "solved": sum(bool(e.get("correct")) for e in rows),
                         "avg_time": "—"} for topic, rows in sorted(buckets.items())]
+
+    # Independent practice is part of the same learning picture. Merge first
+    # submissions into topic rows so the teacher sees a student's answer on the
+    # next dashboard refresh, while keeping the tutor-only KPI unchanged.
+    by_topic = {row.topic: row for row in result.by_topic}
+    for topic, rows in buckets.items():
+        practice_attempts = len(rows)
+        practice_solved = sum(bool(e.get("correct")) for e in rows)
+        existing = by_topic.get(topic)
+        if existing:
+            total = existing.attempts + practice_attempts
+            existing.solve_rate = round(
+                (existing.solve_rate * existing.attempts + practice_solved) / total, 2
+            )
+            existing.attempts = total
+        else:
+            by_topic[topic] = TopicStat(
+                topic=topic,
+                attempts=practice_attempts,
+                avg_reasoning=0.0,
+                solve_rate=round(practice_solved / practice_attempts, 2),
+                avg_final_mastery=0.0,
+                gaming_rate=0.0,
+            )
+    result.by_topic = sorted(by_topic.values(), key=lambda row: row.topic)
+    active_students = {
+        e.get("student_id") for e in events
+        if e.get("event") in {"turn", "practice_grade"}
+        and e.get("student_id") not in {None, "", "anon"}
+    }
+    result.n_students = len(active_students)
     return result
 
 

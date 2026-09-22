@@ -238,6 +238,19 @@ class LearningStep(BaseModel):
     starter_difficulty: str = "easy"
 
 
+class LearningRecommendation(BaseModel):
+    topic: str
+    status: Literal["start", "continue", "review", "advance"]
+    difficulty: str
+    qtype: QuestionType
+    reason_zh: str
+    reason_en: str
+    attempts: int = 0
+    accuracy: Optional[float] = None
+    reasoning: Optional[float] = None
+    mastery: Optional[float] = None
+
+
 # --------------------------------------------------------------------------- #
 # Teacher analytics (class-level, never per-identified-student by default)
 # --------------------------------------------------------------------------- #

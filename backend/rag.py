@@ -64,7 +64,8 @@ def _collection():
         return _client().get_collection(config.CHROMA_COLLECTION)
     except Exception as exc:
         raise RAGUnavailable(
-            "MIT Chroma collection is missing. Run: python -m scripts.ingest_mit"
+            "The packaged MIT Chroma snapshot is missing or incompatible. "
+            "Restore data/chroma from the repository."
         ) from exc
 
 
@@ -134,11 +135,9 @@ def index_status() -> dict[str, Any]:
 
 
 def warmup() -> None:
+    """Validate the packaged index without forcing a model download at startup."""
     collection = _collection()
-    if collection.count():
-        _embedding_model().encode(
-            ["Calculus 1"], normalize_embeddings=True, show_progress_bar=False
-        )
+    collection.count()
 
 
 def _where(
@@ -390,7 +389,7 @@ def section_page(section_id: str) -> dict[str, Any]:
     if not chunks:
         raise RAGUnavailable(
             f"No indexed text for {meta['display_title']}. "
-            "Run: python -m scripts.ingest_mit"
+            "Restore the packaged data/chroma snapshot."
         )
     text_overrides = _presentation_data("text_overrides.json")
     chunks = [{**chunk, "text": text_overrides.get(chunk["id"], chunk["text"])} for chunk in chunks]

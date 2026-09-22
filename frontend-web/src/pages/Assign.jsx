@@ -1,5 +1,6 @@
 import { displayLabel } from '../localization.js'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useLang } from '../i18n.jsx'
 import { useAsync } from '../components/hooks.js'
 import { api } from '../api.js'
@@ -43,6 +44,7 @@ const estimateMinutes = (items) =>
 
 export default function Assign() {
   const { t, lang } = useLang()
+  const [searchParams] = useSearchParams()
   const classId = useTeacherClass()
   const topicsQ = useAsync(() => api.getTopics(), [])
   const listQ = useAsync(() => api.getAssignments(classId), [classId])
@@ -60,6 +62,13 @@ export default function Assign() {
   const [blocks, setBlocks] = useState([newBlock(topicNames[0] || 'Limits')])
   const [saving, setSaving] = useState(false)
   const [warn, setWarn] = useState('')
+  const suggestedTopic = searchParams.get('topic')
+
+  useEffect(() => {
+    if (!suggestedTopic) return
+    setBlocks([newBlock(suggestedTopic)])
+    setTitle(t('assign_recommended_title').replace('{topic}', displayLabel(suggestedTopic, lang)))
+  }, [suggestedTopic, lang, t])
 
   const baseTopic = () => blocks[blocks.length - 1]?.topic || topicNames[0] || 'Limits'
   const applyTemplate = (kind) => {
@@ -88,11 +97,7 @@ export default function Assign() {
   return (
     <div className="stack fade-in">
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <div className="section-step">{t('assign_step')}</div>
-          <h2 className="section-head">{t('assign_head')}</h2>
-          <p className="muted" style={{ margin: '4px 0 0' }}>{t('assign_head_sub')}</p>
-        </div>
+        <p className="muted" style={{ margin: 0 }}>{t('assign_head_sub')}</p>
         <MockPill show={listQ.data?._mock} />
       </div>
 

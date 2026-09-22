@@ -20,11 +20,10 @@ frontend-web/.vite-dev.log
 data/logs/*.jsonl
 data/favorites.json
 data/favorites.json.tmp
-data/chroma/
+data/calculus_tutor.sqlite3*
 data/models/
 data/rag/
 data/textbook/openstax-calculus-volume-1/
-data/textbook/mit-calculus/parsed/
 
 # Generated analysis artifacts
 reports/
