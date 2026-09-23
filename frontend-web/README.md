@@ -1,18 +1,16 @@
-# Teacher Dashboard — Vite + React
+# CalcPilot Web — Vite + React
 
-A modern rewrite of the **teacher-facing** app (previously Streamlit) using
-**Vite + React + ECharts**. The student app and the FastAPI backend are unchanged.
+A responsive **student + teacher** learning workspace built with
+**Vite + React + ECharts**. It is the current frontend for CalcPilot.
 
-## Why this exists
+## What it includes
 
-The original teacher UI lived in `frontend/teacher_app.py` + `frontend/teacher/*.py`
-(Streamlit). This module reimplements the same features as a real single-page web
-app so the UI can be styled and customized freely:
+This single-page web app supports both roles:
 
-- **Overview** — KPI cards, key insights, tutor-vs-solo comparison, topic health
-- **Diagnose** — accuracy by knowledge point, reasoning-quality distribution, practice results
-- **Assign** — problem-set builder, quick templates, scheduled-assignment list (create/delete)
-- **Assistant** — natural-language Q&A over class data
+- **Student** — textbook concepts, practice, favorites, learning recommendations, AI tutor
+- **Teacher overview** — key class signals and weak-topic ranking
+- **Assign** — problem-set builder and current assignments
+- **AI assistants** — guided student tutoring and class-data Q&A
 
 Extras: light/dark theme, 中文 / English toggle, responsive layout.
 
@@ -76,16 +74,11 @@ frontend-web/
 │   │   └── hooks.js        # useAsync / useAnalytics
 │   └── pages/
 │       ├── Overview.jsx
-│       ├── Diagnose.jsx
 │       ├── Assign.jsx
-│       └── Assistant.jsx
+│       └── FloatingTeacherAssistant.jsx
 ```
 
-## Notes on the migration
+## Architecture note
 
-- The **backend did not change** — React calls the same REST endpoints the
-  Streamlit app used.
-- The old Streamlit teacher files (`frontend/teacher_app.py`, `frontend/teacher/`)
-  can be retired once this is adopted; they are left in place for reference.
-- State that Streamlit handled implicitly (`st.session_state`, `?instructor=1`)
-  is now explicit React state / routing.
+- React calls the FastAPI REST endpoints in `backend/`.
+- Student and teacher interaction state is explicit React state and routing.

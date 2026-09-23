@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 
-/* Bilingual copy — ported from frontend/i18n.py (teacher-facing keys). */
+/* Bilingual copy shared by the teacher and student experiences. */
 const DICT = {
   en: {
     figure_missing: "This illustration has not been restored yet.",
@@ -18,8 +18,8 @@ const DICT = {
     assistant_fallback: "The model is unavailable. This is a rule-based summary, not an answer to your specific question.",
     textbook_original: "Learning notes adapted from the textbook, with original English illustrations.",
 
-    app_title: 'Teacher Dashboard',
-    app_sub: 'Calculus Tutor · Class Analytics',
+    app_title: 'CalcPilot for Teachers',
+    app_sub: 'Calculus learning · Class analytics',
     nav_overview: 'Class overview',
     nav_diagnose: 'Diagnose',
     nav_assign: 'Assign',
@@ -166,7 +166,7 @@ const DICT = {
     role_switch_to_teacher: 'Teacher view',
 
     // ---- Student shell ----
-    stu_app_title: 'Calculus Tutor',
+    stu_app_title: 'CalcPilot',
     stu_app_sub: 'Learn · Practice · AI tutor',
     learning_path_next: 'Recommended next step',
     learning_path_start: 'Start practice',
@@ -291,8 +291,8 @@ const DICT = {
     assistant_fallback: "模型暂不可用。以下为数据摘要，并非针对本次问题的回答。",
     textbook_original: "学习内容为教材整理笔记，插图保留英文原图。",
 
-    app_title: '教师工作台',
-    app_sub: '微积分助教 · 班级学情',
+    app_title: 'CalcPilot 教师端',
+    app_sub: '微积分成长站 · 班级学情',
     nav_overview: '班级概览',
     nav_diagnose: '学情诊断',
     nav_assign: '布置练习',
@@ -439,7 +439,7 @@ const DICT = {
     role_switch_to_teacher: '教师视图',
 
     // ---- Student shell ----
-    stu_app_title: '微积分助教',
+    stu_app_title: 'CalcPilot',
     stu_app_sub: '学概念 · 做练习 · AI 助手',
     learning_path_next: '为你推荐的下一步',
     learning_path_start: '开始练习',

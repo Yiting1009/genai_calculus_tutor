@@ -6,6 +6,7 @@ import { useAsync } from '../components/hooks.js'
 import { api } from '../api.js'
 import { Card, Loading, MockPill, Empty } from '../components/ui.jsx'
 import { useTeacherClass } from '../components/TeacherClass.jsx'
+import { ClipboardList, PenLine, Plus, Trash2 } from 'lucide-react'
 
 const QTYPES = ['single_choice', 'multiple_choice', 'fill_blank', 'drag_order']
 const DIFFS = ['easy', 'medium', 'hard']
@@ -103,7 +104,7 @@ export default function Assign() {
 
       <div className="grid cols-2 assign-grid">
         {/* ---------- Left: builder ---------- */}
-        <Card title={t('assign_new')} icon="✏️" sub={t('assign_new_caption')} className="pad-lg">
+        <Card title={t('assign_new')} icon={<PenLine size={18} />} sub={t('assign_new_caption')} className="pad-lg">
           <div className="stack" style={{ gap: 16 }}>
             <Field label={t('assign_title_label')}>
               <input className="inp" value={title} placeholder={t('assign_title_hint')}
@@ -143,13 +144,13 @@ export default function Assign() {
                     <input className="inp" type="number" min={1} max={10} value={b.count}
                       onChange={e => updBlock(b.id, { count: +e.target.value })} />
                     <button type="button" className="blk-del" title={t('assign_delete')}
-                      onClick={() => removeBlock(b.id)}>✕</button>
+                      onClick={() => removeBlock(b.id)}><Trash2 size={16} /></button>
                   </div>
                 ))}
               </div>
 
               {blocks.length < MAX_BLOCKS && (
-                <button type="button" className="btn ghost add-blk" onClick={addBlock}>{t('assign_add_block')}</button>
+                <button type="button" className="btn ghost add-blk" onClick={addBlock}><Plus size={17} />{t('assign_add_block')}</button>
               )}
             </div>
 
@@ -172,7 +173,7 @@ export default function Assign() {
         </Card>
 
         {/* ---------- Right: current assignments ---------- */}
-        <Card title={t('current_assignments')} icon="📋" sub={t('assign_not_connected')}>
+        <Card title={t('current_assignments')} icon={<ClipboardList size={18} />} sub={t('assign_not_connected')}>
           {listQ.loading ? <Loading rows={2} /> :
             assignments.length === 0 ? <Empty icon="📭">{t('no_assignments')}</Empty> :
             <div className="stack asg-list" style={{ gap: 12 }}>

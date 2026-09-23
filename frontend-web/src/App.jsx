@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
-import { ClipboardPlus, LayoutDashboard } from 'lucide-react'
+import { ClipboardPlus, GraduationCap, LayoutDashboard, Moon, School, Sun } from 'lucide-react'
 import { useLang } from './i18n.jsx'
 import Overview from './pages/Overview.jsx'
 import Assign from './pages/Assign.jsx'
@@ -36,14 +36,15 @@ function ShellControls({ role, setRole, theme, setTheme }) {
       <div className="divider" />
       <div className="role-switch">
         <button className={'role-btn' + (role === 'teacher' ? ' active' : '')} onClick={() => setRole('teacher')}>
-          🧑‍🏫 {t('role_teacher')}
+          <School size={15} /> {t('role_teacher')}
         </button>
         <button className={'role-btn' + (role === 'student' ? ' active' : '')} onClick={() => setRole('student')}>
-          🎓 {t('role_student')}
+          <GraduationCap size={15} /> {t('role_student')}
         </button>
       </div>
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <span className="muted" style={{ fontSize: 13, fontWeight: 600 }}>
+          <span className="theme-label-icon" aria-hidden="true">{theme === 'dark' ? <Moon size={14} /> : <Sun size={14} />}</span>
           {theme === 'dark' ? t('theme_dark') : t('theme_light')}
         </span>
         <button className={'switch' + (theme === 'dark' ? ' on' : '')}
@@ -91,6 +92,8 @@ function TeacherApp({ controls }) {
             <div className="brand-sub">{t('app_sub')}</div>
           </div>
         </div>
+
+        <div className="workspace-kicker">{lang === 'zh' ? '教师工作台' : 'TEACHER WORKSPACE'}</div>
 
         <div className="nav-group-label">{t('nav_group_main')}</div>
         <label style={{ display: 'block', marginBottom: 16 }}>

@@ -1,9 +1,9 @@
 {
-  "name": "genai-calculus-tutor-teacher",
+  "name": "calcpilot",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Teacher dashboard for GenAI Calculus Tutor — Vite + React rewrite of the Streamlit teacher app.",
+  "description": "CalcPilot — a RAG-grounded calculus learning workspace for students and teachers.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

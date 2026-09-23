@@ -8,10 +8,11 @@ import Favorites from './student/Favorites.jsx'
 import LearningRecommendation from './student/LearningRecommendation.jsx'
 import { PRESETS } from './student/prompts.js'
 import { prefetchQuestion } from './student/questionCache.js'
+import { BookOpen, ChevronDown, ListTree, PenLine, Star } from 'lucide-react'
 
 const STAGES = [
-  { key: 'concept',  ic: '📖', labelKey: 'stage_concept',  hintKey: 'stage_concept_hint' },
-  { key: 'practice', ic: '✍️', labelKey: 'stage_practice', hintKey: 'stage_practice_hint' },
+  { key: 'concept',  Icon: BookOpen, labelKey: 'stage_concept',  hintKey: 'stage_concept_hint' },
+  { key: 'practice', Icon: PenLine, labelKey: 'stage_practice', hintKey: 'stage_practice_hint' },
 ]
 
 function getGuestFavoriteId() {
@@ -40,6 +41,7 @@ export default function StudentApp({ topbar }) {
   const [stage, setStage] = useState('concept')   // 'concept' | 'practice'
   const [difficulty, setDifficulty] = useState('easy')
   const [qtype, setQtype] = useState('single_choice')
+  const [catalogOpen, setCatalogOpen] = useState(false)
 
   // floating tutor context
   const [assistantOpen, setAssistantOpen] = useState(false)
@@ -110,6 +112,7 @@ export default function StudentApp({ topbar }) {
 
   const pickTopic = (title) => {
     setTopic(title); setStage('concept'); setView('learning')
+    setCatalogOpen(false)
     setAssistantContext((current) => ({
       entry: 'concept', problem: null, seed: null, version: current.version + 1,
     }))
@@ -165,6 +168,8 @@ export default function StudentApp({ topbar }) {
           </div>
         </div>
 
+        <div className="workspace-kicker">{lang === 'zh' ? '学生学习空间' : 'STUDENT WORKSPACE'}</div>
+
         <div className="stu-field">
           <label className="ctrl-label">{t('stu_name')}</label>
           <input className="inp" placeholder={t('stu_name_ph')} value={studentId} onChange={(e) => saveName(e.target.value)} />
@@ -178,12 +183,19 @@ export default function StudentApp({ topbar }) {
 
         <button className={'nav-item' + (view === 'favorites' ? ' active' : '')} style={{ marginTop: 6 }}
           onClick={() => setView('favorites')}>
-          <span className="ic">⭐</span>{t('stu_favorites')}
+          <span className="ic"><Star size={18} /></span>{t('stu_favorites')}
           {favorites.length > 0 && <span className="fav-count">{favorites.length}</span>}
         </button>
 
-        <div className="nav-group-label">{t('stu_catalog')}</div>
-        <div className="catalog-scroll">
+        <div className="nav-group-label catalog-label">{t('stu_catalog')}</div>
+        <button className="mobile-catalog-toggle" type="button" aria-expanded={catalogOpen}
+          onClick={() => setCatalogOpen((value) => !value)}>
+          <ListTree size={17} />
+          <span>{t('stu_catalog')}</span>
+          <strong>{topic}</strong>
+          <ChevronDown size={17} className={catalogOpen ? 'is-open' : ''} />
+        </button>
+        <div className={'catalog-scroll' + (catalogOpen ? ' mobile-open' : '')}>
           {(catalog?.chapters || []).map((ch) => (
             <div key={ch.id} className="cat-chapter">
               <div className="cat-chapter-title">{ch.title}</div>
@@ -214,7 +226,7 @@ export default function StudentApp({ topbar }) {
                 {STAGES.map((s, i) => (
                   <button key={s.key} className={'step' + (s.key === stage ? ' active' : '') + (i < stageIndex ? ' done' : '')}
                     onClick={() => setStage(s.key)}>
-                    <span className="step-ic">{s.ic}</span>
+                    <span className="step-ic"><s.Icon size={18} strokeWidth={2} /></span>
                     <span className="step-label">{t(s.labelKey)}</span>
                   </button>
                 ))}

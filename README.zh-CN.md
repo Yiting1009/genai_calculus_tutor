@@ -1,4 +1,4 @@
-# GenAI 微积分助教（GenAI Calculus Tutor）
+# CalcPilot｜微积分成长站
 
 *[English](README.md) | 中文*
 
@@ -11,7 +11,7 @@
 系统同时实现输入/输出双向护栏、服务端 Explain-to-unlock 门控、轻量学习真实性检查和
 可复现评测集。
 
-技术栈为 **FastAPI（后端）+ Streamlit（前端）**。这是毕业设计课题「大学数学中的解释驱动
+技术栈为 **React + Vite（前端）+ FastAPI（后端）+ SQLite（学习数据）+ Chroma RAG（教材检索）**。这是毕业设计课题「大学数学中的解释驱动
 学习（explanation-driven learning）」的演示 Demo，架构上预留了之后接入 Learnvia 的空间。
 
 ---
@@ -37,7 +37,7 @@
 ## 项目结构
 
 ```
-GenAI_Calculus_Tutor/
+CalcPilot/
 ├── backend/
 │   ├── main.py        # FastAPI 应用与接口
 │   ├── generator.py   # AI 内容生成（2.1）+ 自动判分
@@ -49,8 +49,10 @@ GenAI_Calculus_Tutor/
 │   ├── store.py       # 内存会话 + JSONL 事件日志
 │   ├── schemas.py     # pydantic 模型
 │   └── config.py      # 环境变量 / 路径
-├── frontend/
-│   └── streamlit_app.py   # 概念 → 练习 → 助教聚焦流程
+├── frontend-web/          # 当前使用的 React 学生端与教师端
+│   ├── src/
+│   ├── package.json
+│   └── vite.config.js
 ├── data/
 │   ├── problems.json  # 12 道种子 Calc 1 题（助教也会用）
 │   ├── eval/          # 安全与评测固定样例
@@ -66,17 +68,34 @@ GenAI_Calculus_Tutor/
 
 ## 安装
 
-1. 准备 Python 环境（Python 3.9+），安装依赖：
+macOS/Linux 可直接执行：
+
+```bash
+bash setup_calcpilot.sh
+bash run_calcpilot.sh
+```
+
+也可以按下面步骤分别安装和运行：
+
+1. 准备 Python 环境（Python 3.9+），安装后端依赖：
 
 ```bash
 pip install -r requirements.txt
 ```
 
+安装 React 前端依赖（Node.js 18+）：
+
+```bash
+cd frontend-web
+npm install
+cd ..
+```
+
 2. 不需要重新构建 RAG。仓库已经包含 MIT Calculus 八章的可用 Chroma
 快照和网页运行所需的教材插图，后端启动时会自动验证索引。
 
-首次进行语义检索时，sentence-transformer 模型会自动下载并缓存在本机。
-如需完全离线运行，可将兼容模型放入 `data/models/all-MiniLM-L6-v2`，或配置
+匹配该索引的 sentence-transformer 模型已经预置在
+`data/models/all-MiniLM-L6-v2`，语义检索无需额外下载模型。只有替换模型时才需要配置
 `RAG_EMBEDDING_MODEL_DIR`。
 
 3. 配置凭据：把 `.env.example` 复制为 `.env`，填入你的 key：
@@ -94,21 +113,22 @@ BACKEND_URL=http://localhost:8000
 
 ## 运行
 
-打开两个终端。
+从项目根目录打开两个终端。
 
 **终端 1 — 后端：**
 
 ```bash
-uvicorn backend.main:app --host 127.0.0.1 --port 8000
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
 **终端 2 — 前端：**
 
 ```bash
-streamlit run frontend/streamlit_app.py
+cd frontend-web
+npm run dev
 ```
 
-打开 http://localhost:8501，按照 **Concept → Practice → Tutor** 学习。概念卡和 Tutor
+打开 http://localhost:5175，按照 **Concept → Practice → Tutor** 学习。概念卡和 Tutor
 会展示用于回答的 MIT 教材章节；练习答错时答案保持隐藏，可重试或进入引导。
 
 ### 学生视图 vs 老师视图
@@ -116,11 +136,7 @@ streamlit run frontend/streamlit_app.py
 页面**默认面向学生**：隐藏实验内部信息（条件、推理评分、提示等级），只展示干净的界面
 和一个鼓励性的进度条。实验条件会在**后台随机分配**，并照常记录到日志。
 
-如果需要查看实验控制项和实时指标（用于测试或向评审演示），打开**老师视图**：
-
-```
-http://localhost:8501/?instructor=1
-```
+通过侧边栏底部的**教师 / 学生**切换进入两个界面；教师端会读取学生端产生的同一组学习记录。
 
 ---
 

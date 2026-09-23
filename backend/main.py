@@ -67,9 +67,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(
-    title="GenAI Calculus Tutor", version="0.4.0", lifespan=lifespan
-)
+app = FastAPI(title="CalcPilot API", version="0.4.0", lifespan=lifespan)
 app.mount(
     "/textbook-assets",
     StaticFiles(directory=config.TEXTBOOK_ASSETS_DIR, check_dir=False),

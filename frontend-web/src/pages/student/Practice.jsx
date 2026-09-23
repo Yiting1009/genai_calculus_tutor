@@ -4,6 +4,7 @@ import { api } from '../../api.js'
 import { Card, Loading, MockPill, Badge } from '../../components/ui.jsx'
 import { MathText } from '../../components/math.jsx'
 import { getCachedQuestion, loadQuestion } from './questionCache.js'
+import { ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, ChevronDown, ChevronUp, Lightbulb, RotateCcw } from 'lucide-react'
 
 const QTYPES = ['single_choice', 'multiple_choice', 'fill_blank', 'drag_order']
 const DIFFS = ['easy', 'medium', 'hard']
@@ -117,7 +118,8 @@ export default function Practice({
               <Badge level="neutral">{qtypeLabel(q.type)}</Badge>
             </div>
             <button className="btn sm ghost" aria-pressed={isFav} disabled={favoriteSaving} onClick={toggleFavorite}>
-              {favoriteSaving ? t('practice_favorite_saving') : isFav ? '★ ' + t('practice_unfavorite') : '☆ ' + t('practice_favorite')}
+              {isFav ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
+              {favoriteSaving ? t('practice_favorite_saving') : isFav ? t('practice_unfavorite') : t('practice_favorite')}
             </button>
           </div>
 
@@ -155,18 +157,18 @@ export default function Practice({
 
       {/* CTA bar */}
       <div className="cta-bar">
-        <button className="btn" onClick={onBackConcept}>{t('practice_back_concept')}</button>
+        <button className="btn" onClick={onBackConcept}><ArrowLeft size={17} />{t('practice_back_concept')}</button>
         <div className="spacer" />
         {grade?.correct ? (
           <>
             <button className="btn" onClick={() => onExplainCorrect(q)}>{t('practice_explain_correct')}</button>
-            <button className="btn primary" onClick={() => load(true)}>{t('practice_next')} →</button>
+            <button className="btn primary" onClick={() => load(true)}>{t('practice_next')} <ArrowRight size={17} /></button>
           </>
         ) : grade ? (
           <>
-            <button className="btn" onClick={() => onGetHint(q)}>{t('practice_get_hint')}</button>
+            <button className="btn" onClick={() => onGetHint(q)}><Lightbulb size={17} />{t('practice_get_hint')}</button>
             <button className="btn" onClick={() => onFirstStep(q)}>{t('practice_first_step')}</button>
-            <button className="btn" onClick={() => setGrade(null)}>{t('practice_retry')}</button>
+            <button className="btn" onClick={() => setGrade(null)}><RotateCcw size={17} />{t('practice_retry')}</button>
           </>
         ) : (
           <>
@@ -234,8 +236,8 @@ function AnswerControls({ q, answer, setAnswer, disabled }) {
         <div key={i} className="order-row">
           <span className="order-idx">{i + 1}</span>
           <MathText style={{ flex: 1 }}>{step}</MathText>
-          <button className="btn sm ghost" disabled={disabled || i === 0} onClick={() => move(i, -1)}>↑</button>
-          <button className="btn sm ghost" disabled={disabled || i === order.length - 1} onClick={() => move(i, 1)}>↓</button>
+          <button className="btn sm icon ghost" title="Move up" disabled={disabled || i === 0} onClick={() => move(i, -1)}><ChevronUp size={17} /></button>
+          <button className="btn sm icon ghost" title="Move down" disabled={disabled || i === order.length - 1} onClick={() => move(i, 1)}><ChevronDown size={17} /></button>
         </div>
       ))}
     </div>

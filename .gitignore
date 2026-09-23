@@ -21,7 +21,6 @@ data/logs/*.jsonl
 data/favorites.json
 data/favorites.json.tmp
 data/calculus_tutor.sqlite3*
-data/models/
 data/rag/
 data/textbook/openstax-calculus-volume-1/
 

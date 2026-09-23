@@ -3,6 +3,7 @@ import { useLang } from '../../i18n.jsx'
 import { api } from '../../api.js'
 import { Card, Loading, MockPill } from '../../components/ui.jsx'
 import { Formula, MathText } from '../../components/math.jsx'
+import { ArrowRight } from 'lucide-react'
 
 export default function Concept({ topic, onStartPractice }) {
   const { t } = useLang()
@@ -85,7 +86,7 @@ export default function Concept({ topic, onStartPractice }) {
 
       <div className="cta-bar">
         <div className="spacer" />
-        <button className="btn primary" onClick={onStartPractice}>{t('concept_start_practice')} →</button>
+        <button className="btn primary" onClick={onStartPractice}>{t('concept_start_practice')} <ArrowRight size={17} /></button>
       </div>
     </div>
   )
