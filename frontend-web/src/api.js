@@ -230,7 +230,10 @@ export const api = {
 
   // POST /generate { type, topic, difficulty, language } -> GeneratedQuestionPublic
   generateQuestion: ({ type, topic, difficulty, language = 'en', exclude_stems = [] }) =>
-    req('/generate', { method: 'POST', body: JSON.stringify({ type, topic, difficulty, language, exclude_stems }) }),
+    withFallback(
+      async () => await req('/generate', { method: 'POST', body: JSON.stringify({ type, topic, difficulty, language, exclude_stems }) }),
+      MOCK.question(type, topic, difficulty),
+    ),
 
   // POST /grade { question_id, single|multiple|blanks|order, student_id, class_id } -> GradeResponse
   gradeAnswer: (payload) =>

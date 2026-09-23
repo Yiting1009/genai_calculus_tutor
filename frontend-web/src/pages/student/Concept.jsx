@@ -51,7 +51,6 @@ export default function Concept({ topic, onStartPractice }) {
               {(b.formulas || []).map((f, i) => (
                 <Formula key={i}>{f}</Formula>
               ))}
-              {(b.figures || []).some(fig => fig.available === false) && <p className="muted">{t("figure_missing")}</p>}
               {(b.figures || []).filter(fig => fig.available !== false).map((fig) => (
                 <figure key={fig.id} style={{ margin: '10px 0' }}>
                   <a href={fig.url} target="_blank" rel="noreferrer"><TextbookImage fig={fig} style={{ maxWidth: '100%', maxHeight: 420, objectFit: 'contain', borderRadius: 12, border: '1px solid var(--border)', background: '#fff' }} /></a>

@@ -56,8 +56,8 @@ CalcPilot/
 ├── data/
 │   ├── problems.json  # 12 道种子 Calc 1 题（助教也会用）
 │   ├── eval/          # 安全与评测固定样例
-│   ├── textbook/      # MIT 元数据、PDF、人工校验内容与运行时插图
-│   ├── chroma/        # 仓库自带、可直接使用的 MIT 向量索引
+│   ├── textbook/      # 精简 MIT 元数据、人工校验内容与示例插图
+│   ├── chroma/        # 仓库自带的三小节演示向量索引
 │   └── logs/          # 每会话 JSONL 日志（已 gitignore）
 ├── scripts/           # 冒烟/API/生成 测试 + 分析
 ├── requirements.txt
@@ -91,12 +91,9 @@ npm install
 cd ..
 ```
 
-2. 不需要重新构建 RAG。仓库已经包含 MIT Calculus 八章的可用 Chroma
-快照和网页运行所需的教材插图，后端启动时会自动验证索引。
-
-匹配该索引的 sentence-transformer 模型已经预置在
-`data/models/all-MiniLM-L6-v2`，语义检索无需额外下载模型。只有替换模型时才需要配置
-`RAG_EMBEDDING_MODEL_DIR`。
+2. 不需要重新构建 RAG。为控制演示包体积，仓库仅为 1.1–1.3 小节保留真实教材
+Chroma 快照和示例插图，其余目录使用带 Mock 标记的静态概念卡
+和练习。安装时只需下载一次 sentence-transformer，不需要重新导入教材或构建索引。
 
 3. 配置凭据：把 `.env.example` 复制为 `.env`，填入你的 key：
 
@@ -209,18 +206,17 @@ SQLite/JSONL 学习事件以及确定性测试与评测脚本。
 
 ## 教材授权与署名
 
-知识片段来自 Gilbert Strang 编写、MIT OpenCourseWare 提供的 *Calculus*，采用
-CC BY-NC-SA 4.0 许可。本项目使用 Fall 2017 的第 1–8 章 PDF 资源；每个索引片段保留
-章节、小节、页码、图片、来源和署名信息。审核后的运行时插图和可直接使用的 Chroma
-快照会随仓库提交，因此全新克隆无需重新构建 RAG 数据。
+保留的 1.1–1.3 知识片段来自 Gilbert Strang 编写、MIT OpenCourseWare 提供的
+*Calculus*，采用 CC BY-NC-SA 4.0 许可。每个索引片段保留小节、页码、图片、来源和署名
+信息。精简 Chroma 快照会随仓库提交，因此全新克隆无需重新构建 RAG 数据。
 
 ## 演示与简历表述
 
-推荐演示路径：选择 **Chain Rule** → 查看带出处概念卡 → 生成练习 → 直接索答被拦截 →
-给出理由后解锁下一步提示 → 在老师视图查看推理质量、安全事件与掌握度。
+推荐演示路径：选择 **1.1 Velocity and Distance** → 查看真实引用概念卡 → 生成教材练习 →
+切换到带 Mock 标记的其他章节 → 展示学习推荐与教师端数据联动。
 
 可用于简历的客观表述：
 
-> 构建面向微积分学习的 RAG 增强苏格拉底式 Agent，基于 Chroma 对 MIT Calculus 八章内容
+> 构建轻量 RAG 增强苏格拉底式微积分 Agent，基于 Chroma 对 MIT Calculus 三个代表性小节
 > 实现 metadata 过滤、语义检索与引用溯源；设计服务端 Explain-to-Unlock 策略及双向防剧透，并通过
 > Golden Set 评测检索命中率、引用覆盖率、策略遵循率和答案泄漏率。

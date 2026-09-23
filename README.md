@@ -60,8 +60,8 @@ CalcPilot/
 ├── data/
 │   ├── problems.json  # 12 seed Calc 1 problems (used by the tutor too)
 │   ├── eval/          # deterministic safety/evaluation fixtures
-│   ├── textbook/      # MIT metadata, PDFs, curated content and runtime figures
-│   ├── chroma/        # packaged, ready-to-use MIT vector index
+│   ├── textbook/      # compact MIT metadata, curated content and sample figures
+│   ├── chroma/        # packaged three-section demo vector index
 │   └── logs/          # runtime learning logs (gitignored)
 ├── scripts/           # smoke / api / generation tests + analysis, seeding + log analysis
 ├── reports/           # generated tables + figures (gitignored)
@@ -96,13 +96,11 @@ npm install
 cd ..
 ```
 
-2. No RAG build step is required. The repository includes a ready-to-use
-Chroma snapshot for all eight MIT Calculus chapters plus the runtime textbook
-figures. The backend validates this snapshot on startup.
-
-The matching sentence-transformer is packaged at
-`data/models/all-MiniLM-L6-v2`, so semantic retrieval does not require a model
-download. Set `RAG_EMBEDDING_MODEL_DIR` only when replacing it.
+2. No RAG build step is required. To keep the demo small, a ready-to-use
+Chroma snapshot and textbook figures are retained for sections 1.1–1.3, while
+the remaining catalog uses clearly marked mock cards and exercises. The
+sentence-transformer downloads once during setup; no textbook ingestion or
+index build is required.
 
 3. Configure credentials. Copy `.env.example` to `.env` and fill in your key:
 
@@ -232,23 +230,21 @@ and LTI integration.
 
 ## Textbook attribution
 
-Textbook excerpts come from Gilbert Strang's *Calculus*, provided by MIT
-OpenCourseWare under CC BY-NC-SA 4.0. This project uses the Fall 2017 Chapter
-1–8 PDF resources. Indexed chunks retain chapter, section, page, figure, source,
-and attribution metadata. The reviewed runtime figures and ready-to-use Chroma
-snapshot are committed so a fresh clone does not need to rebuild the RAG data.
+Textbook excerpts in the retained 1.1–1.3 sample come from Gilbert Strang's
+*Calculus*, provided by MIT OpenCourseWare under CC BY-NC-SA 4.0. Indexed chunks
+retain section, page, figure, source, and attribution metadata. The compact
+Chroma snapshot is committed so a fresh clone does not rebuild the RAG data.
 
 ## Demo and resume wording
 
-Suggested demo: select **Chain Rule** → inspect a cited concept card → generate
-a practice item → show direct-answer blocking → explain a valid step to unlock
-the next hint → inspect reasoning, safety, and mastery signals in instructor
-view.
+Suggested demo: select **1.1 Velocity and Distance** → inspect its real cited
+concept card → generate a textbook practice item → compare with a clearly
+marked mock section → inspect learning recommendations and instructor signals.
 
 Accurate resume summary:
 
-> Built a RAG-grounded Socratic calculus agent using local semantic retrieval
-> over eight chapters of MIT Calculus stored in Chroma; implemented server-enforced
+> Built a compact RAG-grounded Socratic calculus demo using local semantic retrieval
+> over three representative MIT Calculus sections stored in Chroma; implemented server-enforced
 > explain-to-unlock, bidirectional anti-leak guardrails, engagement signals,
 > and a golden-set evaluation pipeline for retrieval, citation, policy, and
 > answer-leak metrics.

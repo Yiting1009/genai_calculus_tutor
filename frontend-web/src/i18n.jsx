@@ -199,7 +199,7 @@ const DICT = {
     concept_pitfalls: 'Common pitfalls',
     concept_ask_tutor: 'Ask the tutor',
     concept_start_practice: 'Start practice',
-    concept_unavailable: 'The local textbook index is not ready yet — showing a demo concept card.',
+    concept_unavailable: 'This compact package uses static demo content for sections outside the retained RAG sample.',
 
     // ---- Practice ----
     practice_heading: 'Practice',
@@ -210,6 +210,7 @@ const DICT = {
     practice_favorite_saving: 'Saving…',
     practice_source_textbook: 'Adapted from a verified MIT textbook exercise',
     practice_source_generated: 'Generated from verified MIT textbook content',
+    practice_source_mock: 'Static demo practice data',
     practice_citations: 'Textbook sources',
     practice_submit: 'Submit answer',
     practice_regenerate: 'New question',
@@ -472,7 +473,7 @@ const DICT = {
     concept_pitfalls: '常见误区',
     concept_ask_tutor: '询问导师',
     concept_start_practice: '开始练习',
-    concept_unavailable: '本地教材索引尚未就绪——先展示一张演示概念卡。',
+    concept_unavailable: '精简包仅为部分章节保留真实 RAG，本节使用静态演示内容。',
 
     // ---- Practice ----
     practice_heading: '练习',
@@ -483,6 +484,7 @@ const DICT = {
     practice_favorite_saving: '保存中…',
     practice_source_textbook: '改编自已验证的 MIT 教材练习',
     practice_source_generated: '基于已验证的 MIT 教材内容生成',
+    practice_source_mock: '静态演示练习数据',
     practice_citations: '教材来源',
     practice_submit: '提交答案',
     practice_regenerate: '重新生成',

@@ -125,7 +125,7 @@ export default function Practice({
 
           <MathText as="p" style={{ fontSize: 15.5, lineHeight: 1.7, margin: '12px 0' }}>{q.stem}</MathText>
           <div className="muted" style={{ fontSize: 12.5 }}>
-            {q.source === 'textbook' ? t('practice_source_textbook') : t('practice_source_generated')}
+            {mock ? t('practice_source_mock') : q.source === 'textbook' ? t('practice_source_textbook') : t('practice_source_generated')}
           </div>
           {q.instructions && <MathText as="div" className="muted" style={{ fontSize: 13, marginTop: 4 }}>{q.instructions}</MathText>}
 

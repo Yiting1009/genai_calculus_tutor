@@ -131,36 +131,34 @@ export const MOCK = {
     topic,
     title: topic,
     chapter: 'MIT 18.01 · Single Variable Calculus',
-    summary: `${topic} is a core idea in Calculus 1. This is a demo concept card shown because the local textbook index is not connected.`,
+    summary: `${topic} is a core idea in Calculus 1. This compact demo uses a static mock card for sections outside the retained RAG sample.`,
     definition: `Intuitively, ${topic} describes how a quantity behaves as its input changes. The formal definition uses limits to make this precise.`,
     formulas: ['\\lim_{x \\to a} f(x) = L', "f'(x) = \\lim_{h\\to 0} \\frac{f(x+h)-f(x)}{h}"],
     example: `For example, applying ${topic} to f(x) = x² gives a clean, well-known result you can verify by hand.`,
     pitfalls: 'A common mistake is to skip checking the conditions before applying the rule.',
-    source: 'MIT OpenCourseWare',
-    publisher: 'MIT',
-    license: 'CC BY-NC-SA 4.0',
-    source_url: 'https://ocw.mit.edu',
+    source: 'CalcPilot static mock content',
+    publisher: '',
+    license: '',
+    source_url: '',
     term: topic,
     content: [
       { id: 'c1', content_type: 'concept', subtype: 'definition', heading: 'Definition',
         text: `${topic} is defined using the limit of a function as the input approaches a chosen value.`,
-        formulas: ['\\lim_{x \\to a} f(x) = L'], order: 1, figures: [], printed_page: 12 },
+        formulas: ['\\lim_{x \\to a} f(x) = L'], order: 1, figures: [], printed_page: null },
       { id: 'c2', content_type: 'concept', subtype: 'key idea', heading: 'Key idea',
         text: 'The value the function *approaches* can differ from the value it actually takes at that point.',
-        formulas: [], order: 2, figures: [], printed_page: 13 },
+        formulas: [], order: 2, figures: [], printed_page: null },
       { id: 'c3', content_type: 'example', subtype: 'example', heading: 'Worked example',
         text: 'Evaluate the limit of (x²−1)/(x−1) as x→1 by factoring the numerator first.',
-        formulas: ['\\frac{x^2-1}{x-1} = x+1'], order: 3, figures: [], printed_page: 14 },
+        formulas: ['\\frac{x^2-1}{x-1} = x+1'], order: 3, figures: [], printed_page: null },
     ],
-    citations: [
-      { number: 1, source: 'MIT OCW', title: 'Single Variable Calculus', section: topic, url: 'https://ocw.mit.edu', page: 12 },
-    ],
+    citations: [],
   }),
 
   question: (type, topic, difficulty) => {
     const base = { id: 'q-demo-' + Math.random().toString(36).slice(2, 8), type, topic, difficulty,
       source: 'generated', section_id: 'sec-demo',
-      instructions: '', citations: [{ number: 1, source: 'MIT OCW', title: 'Single Variable Calculus', section: topic, url: 'https://ocw.mit.edu', page: 15 }] }
+      instructions: '', citations: [] }
     if (type === 'single_choice')
       return { ...base, stem: `(${difficulty}) What is the limit of (x²−1)/(x−1) as x→1?`, options: ['0', '1', '2', 'Does not exist'] }
     if (type === 'multiple_choice')

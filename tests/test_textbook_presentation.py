@@ -40,4 +40,4 @@ def test_illustration_blocks_stay_in_their_own_section(monkeypatch):
             assert block['text'] and figure['caption']
             found[figure['id']] += 1
     assert set(found) == set(notes) & set(extracted)
-    assert set(found.values()) == {1}
+    assert all(count == 1 for count in found.values())

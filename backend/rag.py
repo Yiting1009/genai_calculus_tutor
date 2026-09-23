@@ -123,11 +123,15 @@ def index_status() -> dict[str, Any]:
     except RAGUnavailable as exc:
         return {"ready": False, "chunks": 0, "detail": str(exc)}
     metadatas = result.get("metadatas") or []
+    section_ids = {item.get("section_id") for item in metadatas if item}
     return {
         "ready": True,
+        "mode": "compact_demo",
         "chunks": collection.count(),
         "collection": config.CHROMA_COLLECTION,
-        "sections": len({item.get("section_id") for item in metadatas if item}),
+        "sections": len(section_ids),
+        "rag_sections": sorted(str(item) for item in section_ids if item),
+        "mock_sections": len(textbook.known_section_ids() - section_ids),
         "content_types": sorted(
             {str(item.get("content_type")) for item in metadatas if item}
         ),
@@ -445,7 +449,7 @@ def section_page(section_id: str) -> dict[str, Any]:
         if not int(meta["pdf_page_start"]) <= page <= int(meta["pdf_page_end"]):
             continue
         figure = _figure_payload(figure_id, printed_page({"pdf_page": page}))
-        if not figure:
+        if not figure or not figure["available"]:
             continue
         content.append({
             "id": "illustration-" + figure_id, "content_type": "concept",
@@ -486,18 +490,11 @@ def section_page(section_id: str) -> dict[str, Any]:
 
 
 def concept_card(topic: str) -> dict[str, Any]:
-    meta = textbook.get_section(topic)
-    if meta is None:
-        needle = topic.lower()
-        for _, section in textbook.iter_sections():
-            info = textbook.get_section(section["id"])
-            if info and needle in {
-                info["title"].lower(),
-                info["display_title"].lower(),
-                info["chapter_title"].lower(),
-            }:
-                meta = info
-                break
+    meta = textbook.resolve_section(topic)
     if meta is None:
         raise KeyError(topic)
+    if not textbook.is_rag_section(meta["id"]):
+        raise RAGUnavailable(
+            f"{meta['display_title']} uses compact-demo mock content."
+        )
     return section_page(meta["id"])

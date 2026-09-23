@@ -98,6 +98,32 @@ def topic_labels() -> list[str]:
     ]
 
 
+def rag_section_ids() -> set[str]:
+    """Sections backed by the compact real-textbook RAG demo."""
+    return set(load_manifest().get("rag_sections", []))
+
+
+def is_rag_section(section_id: str) -> bool:
+    return section_id in rag_section_ids()
+
+
+def resolve_section(topic: str) -> dict[str, Any] | None:
+    """Resolve either a stable section id or one of its display labels."""
+    direct = get_section(topic)
+    if direct:
+        return direct
+    needle = topic.strip().lower()
+    for _, section in iter_sections():
+        info = get_section(section["id"])
+        if info and needle in {
+            info["title"].lower(),
+            info["display_title"].lower(),
+            info["chapter_title"].lower(),
+        }:
+            return info
+    return None
+
+
 @lru_cache(maxsize=1)
 def load_verified_content() -> list[dict[str, Any]]:
     if not config.TEXTBOOK_VERIFIED_CONTENT_FILE.exists():

@@ -14,4 +14,6 @@ def test_packaged_rag_snapshot_is_ready():
     status = rag.index_status()
     assert status["ready"] is True
     assert status["chunks"] > 0
-    assert status["sections"] == 51
+    assert status["mode"] == "compact_demo"
+    assert status["sections"] == 3
+    assert status["mock_sections"] == 48

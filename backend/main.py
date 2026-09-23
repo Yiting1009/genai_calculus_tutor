@@ -190,6 +190,12 @@ def delete_assignment(assignment_id: str):
 @app.post("/generate", response_model=GeneratedQuestionPublic)
 def generate(req: GenerateRequest, background_tasks: BackgroundTasks):
     try:
+        section = textbook.resolve_section(req.topic)
+        if section is not None and not textbook.is_rag_section(section["id"]):
+            raise HTTPException(
+                status_code=503,
+                detail="This compact-demo section uses mock practice data.",
+            )
         question = question_pool.get_or_generate(
             req.type, req.topic, req.difficulty, req.language, req.exclude_stems,
         )
@@ -198,6 +204,8 @@ def generate(req: GenerateRequest, background_tasks: BackgroundTasks):
             req.type, req.topic, req.difficulty, req.language, 2,
         )
         return question
+    except HTTPException:
+        raise
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Unknown section") from exc
     except Exception as exc:  # noqa: BLE001
