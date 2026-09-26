@@ -1,6 +1,6 @@
 /* ------------------------------------------------------------------
    API layer — talks to the existing FastAPI backend.
-   In dev, Vite proxies /api -> http://127.0.0.1:8000 (see vite.config.js).
+   In dev, Vite proxies /api -> http://localhost:8000 (see vite.config.js).
    If the backend is unreachable, we fall back to demo data so the UI
    still renders — controlled by the returned `._mock` flag.
 
@@ -215,25 +215,14 @@ export const api = {
     withFallback(async () => ({ classes: await req('/classes') }), { classes: MOCK.classes }),
 
   // GET /catalog -> CatalogResponse (chapters -> sections)
-  getCatalog: () =>
-    withFallback(async () => await req('/catalog'), MOCK.catalog),
-
-  getLearningRecommendation: (studentId, classId, currentTopic) => {
-    const params = new URLSearchParams({ student_id: studentId, current_topic: currentTopic })
-    if (classId) params.set('class_id', classId)
-    return req('/learning/recommendation?' + params.toString())
-  },
+  getCatalog: () => req('/catalog'),
 
   // GET /concept?topic= -> ConceptCard (503 when RAG index not ready)
-  getConcept: (topic) =>
-    withFallback(async () => await req('/concept?topic=' + encodeURIComponent(topic)), MOCK.concept(topic)),
+  getConcept: (topic) => req('/concept?topic=' + encodeURIComponent(topic)),
 
   // POST /generate { type, topic, difficulty, language } -> GeneratedQuestionPublic
   generateQuestion: ({ type, topic, difficulty, language = 'en', exclude_stems = [] }) =>
-    withFallback(
-      async () => await req('/generate', { method: 'POST', body: JSON.stringify({ type, topic, difficulty, language, exclude_stems }) }),
-      MOCK.question(type, topic, difficulty),
-    ),
+    req('/generate', { method: 'POST', body: JSON.stringify({ type, topic, difficulty, language, exclude_stems }) }),
 
   // POST /grade { question_id, single|multiple|blanks|order, student_id, class_id } -> GradeResponse
   gradeAnswer: (payload) =>
@@ -259,14 +248,22 @@ export const api = {
 
   // GET /favorites?student_id= -> [Favorite]
   getFavorites: (studentId) =>
-    req('/favorites?student_id=' + encodeURIComponent(studentId))
-      .then((favorites) => ({ favorites })),
+    withFallback(
+      async () => ({ favorites: await req('/favorites?student_id=' + encodeURIComponent(studentId)) }),
+      { favorites: MOCK.favorites },
+    ),
 
   // POST /favorites { student_id, class_id, question_id } -> Favorite
   addFavorite: (body) =>
-    req('/favorites', { method: 'POST', body: JSON.stringify(body) }),
+    req('/favorites', { method: 'POST', body: JSON.stringify(body) }).catch(() => ({ ...body, _mock: true })),
 
   // DELETE /favorites/{qid}?student_id=
   deleteFavorite: (questionId, studentId) =>
-    req(`/favorites/${questionId}?student_id=` + encodeURIComponent(studentId), { method: 'DELETE' }),
+    req(`/favorites/${questionId}?student_id=` + encodeURIComponent(studentId), { method: 'DELETE' })
+      .catch(() => ({ removed: true, _mock: true })),
+}
+
+// No demo fallback for translations: never present unrelated text as a translation.
+export async function translateTexts(texts, language) {
+  return req('/localize', { method: 'POST', body: JSON.stringify({ texts, language }) })
 }

@@ -3,26 +3,15 @@ import { useLang } from '../i18n.jsx'
 import { api } from '../api.js'
 import Concept from './student/Concept.jsx'
 import Practice from './student/Practice.jsx'
-import FloatingTutor from './student/FloatingTutor.jsx'
+import Tutor from './student/Tutor.jsx'
 import Favorites from './student/Favorites.jsx'
-import LearningRecommendation from './student/LearningRecommendation.jsx'
 import { PRESETS } from './student/prompts.js'
-import { prefetchQuestion } from './student/questionCache.js'
-import { BookOpen, ChevronDown, ListTree, PenLine, Star } from 'lucide-react'
 
 const STAGES = [
-  { key: 'concept',  Icon: BookOpen, labelKey: 'stage_concept',  hintKey: 'stage_concept_hint' },
-  { key: 'practice', Icon: PenLine, labelKey: 'stage_practice', hintKey: 'stage_practice_hint' },
+  { key: 'concept',  ic: '📖', labelKey: 'stage_concept',  hintKey: 'stage_concept_hint' },
+  { key: 'practice', ic: '✍️', labelKey: 'stage_practice', hintKey: 'stage_practice_hint' },
+  { key: 'tutor',    ic: '💬', labelKey: 'stage_tutor',    hintKey: 'stage_tutor_hint' },
 ]
-
-function getGuestFavoriteId() {
-  const stored = localStorage.getItem('stu_favorite_guest_id')
-  if (stored) return stored
-  const suffix = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`
-  const id = `guest-${suffix}`
-  localStorage.setItem('stu_favorite_guest_id', id)
-  return id
-}
 
 export default function StudentApp({ topbar }) {
   const { t, lang } = useLang()
@@ -38,25 +27,17 @@ export default function StudentApp({ topbar }) {
 
   // learning flow
   const [view, setView] = useState('learning')   // 'learning' | 'favorites'
-  const [stage, setStage] = useState('concept')   // 'concept' | 'practice'
+  const [stage, setStage] = useState('concept')   // 'concept' | 'practice' | 'tutor'
   const [difficulty, setDifficulty] = useState('easy')
   const [qtype, setQtype] = useState('single_choice')
-  const [catalogOpen, setCatalogOpen] = useState(false)
 
-  // floating tutor context
-  const [assistantOpen, setAssistantOpen] = useState(false)
-  const [assistantContext, setAssistantContext] = useState({
-    entry: 'concept', problem: null, seed: null, version: 0,
-  })
+  // tutor context
+  const [tutorEntry, setTutorEntry] = useState(null)
+  const [tutorProblem, setTutorProblem] = useState(null)
+  const [tutorSeed, setTutorSeed] = useState(null)
 
   // favorites
-  const [guestFavoriteId] = useState(getGuestFavoriteId)
   const [favorites, setFavorites] = useState([])
-  const [favoriteError, setFavoriteError] = useState('')
-  const [recommendation, setRecommendation] = useState(null)
-  const [recommendationLoading, setRecommendationLoading] = useState(false)
-  const [learningRevision, setLearningRevision] = useState(0)
-  const favoriteOwnerId = studentId.trim() || guestFavoriteId
 
   useEffect(() => {
     api.getClasses().then((r) => {
@@ -72,33 +53,9 @@ export default function StudentApp({ topbar }) {
   }, [])
 
   useEffect(() => {
-    if (!topic) return
-    prefetchQuestion({ topic, type: qtype, difficulty, language: lang })
-  }, [topic, qtype, difficulty, lang])
-
-  useEffect(() => {
-    if (!topic || !classId || !favoriteOwnerId) return undefined
-    let active = true
-    setRecommendationLoading(true)
-    api.getLearningRecommendation(favoriteOwnerId, classId, topic)
-      .then((result) => { if (active) setRecommendation(result) })
-      .catch(() => { if (active) setRecommendation(null) })
-      .finally(() => { if (active) setRecommendationLoading(false) })
-    return () => { active = false }
-  }, [classId, favoriteOwnerId, learningRevision, topic])
-
-  useEffect(() => {
-    let active = true
-    setFavoriteError('')
-    api.getFavorites(favoriteOwnerId)
-      .then((r) => { if (active) setFavorites(r.favorites || []) })
-      .catch(() => {
-        if (!active) return
-        setFavorites([])
-        setFavoriteError(t('fav_load_error'))
-      })
-    return () => { active = false }
-  }, [favoriteOwnerId, t])
+    if (!studentId) { setFavorites([]); return }
+    api.getFavorites(studentId).then((r) => setFavorites(r.favorites || []))
+  }, [studentId])
 
   const saveName = (v) => { setStudentId(v); localStorage.setItem('stu_name', v) }
 
@@ -106,54 +63,32 @@ export default function StudentApp({ topbar }) {
   const goConcept = () => { setStage('concept'); setView('learning') }
   const goPractice = () => { setStage('practice'); setView('learning') }
   const goTutor = (entry, { problem = null, seed = null } = {}) => {
-    setAssistantContext((current) => ({ entry, problem, seed, version: current.version + 1 }))
-    setAssistantOpen(true)
+    setTutorEntry(entry); setTutorProblem(problem); setTutorSeed(seed)
+    setStage('tutor'); setView('learning')
   }
 
-  const pickTopic = (title) => {
-    setTopic(title); setStage('concept'); setView('learning')
-    setCatalogOpen(false)
-    setAssistantContext((current) => ({
-      entry: 'concept', problem: null, seed: null, version: current.version + 1,
-    }))
-  }
+  const pickTopic = (title) => { setTopic(title); setStage('concept'); setView('learning') }
 
   // ----- favorites -----
   const toggleFavorite = async (q, isFav) => {
-    setFavoriteError('')
-    try {
-      if (isFav) {
-        await api.deleteFavorite(q.id, favoriteOwnerId)
-        setFavorites((f) => f.filter((x) => x.question_id !== q.id))
-      } else {
-        const saved = await api.addFavorite({
-          student_id: favoriteOwnerId, class_id: classId, question_id: q.id,
-        })
-        setFavorites((f) => [saved, ...f.filter((x) => x.question_id !== q.id)])
-      }
-      return true
-    } catch {
-      setFavoriteError(t('fav_save_error'))
-      return false
+    if (!studentId) return
+    if (isFav) {
+      await api.deleteFavorite(q.id, studentId)
+      setFavorites((f) => f.filter((x) => x.question_id !== q.id))
+    } else {
+      await api.addFavorite({ student_id: studentId, class_id: classId, question_id: q.id })
+      setFavorites((f) => [
+        { question_id: q.id, student_id: studentId, class_id: classId, topic: q.topic, stem: q.stem,
+          type: q.type, difficulty: q.difficulty, instructions: q.instructions || '', options: q.options,
+          steps: q.steps, n_blanks: q.n_blanks, saved_at: Date.now() / 1000 }, ...f,
+      ])
     }
   }
   const removeFavorite = async (qid) => {
-    setFavoriteError('')
-    try {
-      await api.deleteFavorite(qid, favoriteOwnerId)
-      setFavorites((f) => f.filter((x) => x.question_id !== qid))
-    } catch {
-      setFavoriteError(t('fav_remove_error'))
-    }
+    await api.deleteFavorite(qid, studentId)
+    setFavorites((f) => f.filter((x) => x.question_id !== qid))
   }
   const practiceFavorite = (f) => { setTopic(f.topic); setQtype(f.type); setDifficulty(f.difficulty); goPractice() }
-  const startRecommendation = (next) => {
-    setTopic(next.topic)
-    setDifficulty(next.difficulty)
-    setQtype(next.qtype)
-    setStage('practice')
-    setView('learning')
-  }
 
   const stageIndex = STAGES.findIndex((s) => s.key === stage)
 
@@ -168,8 +103,6 @@ export default function StudentApp({ topbar }) {
           </div>
         </div>
 
-        <div className="workspace-kicker">{lang === 'zh' ? '学生学习空间' : 'STUDENT WORKSPACE'}</div>
-
         <div className="stu-field">
           <label className="ctrl-label">{t('stu_name')}</label>
           <input className="inp" placeholder={t('stu_name_ph')} value={studentId} onChange={(e) => saveName(e.target.value)} />
@@ -183,19 +116,12 @@ export default function StudentApp({ topbar }) {
 
         <button className={'nav-item' + (view === 'favorites' ? ' active' : '')} style={{ marginTop: 6 }}
           onClick={() => setView('favorites')}>
-          <span className="ic"><Star size={18} /></span>{t('stu_favorites')}
+          <span className="ic">⭐</span>{t('stu_favorites')}
           {favorites.length > 0 && <span className="fav-count">{favorites.length}</span>}
         </button>
 
-        <div className="nav-group-label catalog-label">{t('stu_catalog')}</div>
-        <button className="mobile-catalog-toggle" type="button" aria-expanded={catalogOpen}
-          onClick={() => setCatalogOpen((value) => !value)}>
-          <ListTree size={17} />
-          <span>{t('stu_catalog')}</span>
-          <strong>{topic}</strong>
-          <ChevronDown size={17} className={catalogOpen ? 'is-open' : ''} />
-        </button>
-        <div className={'catalog-scroll' + (catalogOpen ? ' mobile-open' : '')}>
+        <div className="nav-group-label">{t('stu_catalog')}</div>
+        <div className="catalog-scroll">
           {(catalog?.chapters || []).map((ch) => (
             <div key={ch.id} className="cat-chapter">
               <div className="cat-chapter-title">{ch.title}</div>
@@ -215,18 +141,15 @@ export default function StudentApp({ topbar }) {
       <main className="main">
         <div className="content">
           {view === 'favorites' ? (
-            <Favorites favorites={favorites} error={favoriteError}
-              onRemove={removeFavorite} onPractice={practiceFavorite} onBack={goConcept} />
+            <Favorites favorites={favorites} onRemove={removeFavorite} onPractice={practiceFavorite} onBack={goConcept} />
           ) : (
             <>
-              <LearningRecommendation recommendation={recommendation} loading={recommendationLoading}
-                onStart={startRecommendation} />
               {/* stepper */}
               <div className="stepper">
                 {STAGES.map((s, i) => (
                   <button key={s.key} className={'step' + (s.key === stage ? ' active' : '') + (i < stageIndex ? ' done' : '')}
                     onClick={() => setStage(s.key)}>
-                    <span className="step-ic"><s.Icon size={18} strokeWidth={2} /></span>
+                    <span className="step-ic">{s.ic}</span>
                     <span className="step-label">{t(s.labelKey)}</span>
                   </button>
                 ))}
@@ -234,27 +157,30 @@ export default function StudentApp({ topbar }) {
               <div className="stepper-hint muted">{t(STAGES[stageIndex]?.hintKey)}</div>
 
               {stage === 'concept' && topic && (
-                <Concept topic={topic} onStartPractice={goPractice} />
+                <Concept topic={topic}
+                  onAskTutor={() => goTutor('concept', { seed: PRESETS.explain_concept(topic) })}
+                  onStartPractice={goPractice} />
               )}
               {stage === 'practice' && (
                 <Practice topic={topic} difficulty={difficulty} qtype={qtype}
                   setDifficulty={setDifficulty} setQtype={setQtype}
-                  studentId={favoriteOwnerId} classId={classId} lang={lang}
-                  onActivity={() => setLearningRevision((value) => value + 1)}
-                  favorites={favorites} favoriteError={favoriteError} onToggleFavorite={toggleFavorite}
+                  studentId={studentId} classId={classId} lang={lang}
+                  favorites={favorites} onToggleFavorite={toggleFavorite}
                   onBackConcept={goConcept}
                   onStuck={(q) => goTutor('practice', { problem: toProblem(q), seed: PRESETS.im_stuck() })}
                   onExplainCorrect={(q) => goTutor('practice', { problem: toProblem(q), seed: PRESETS.my_reasoning() })}
                   onGetHint={(q) => goTutor('practice', { problem: toProblem(q), seed: PRESETS.hint_first() })}
                   onFirstStep={(q) => goTutor('practice', { problem: toProblem(q), seed: PRESETS.im_stuck() })} />
               )}
+              {stage === 'tutor' && (
+                <Tutor topic={topic} tutorEntry={tutorEntry} problem={tutorProblem} sessionSeed={tutorSeed} lang={lang}
+                  studentId={studentId} classId={classId}
+                  onBackPractice={goPractice} onBackConcept={goConcept} />
+              )}
             </>
           )}
         </div>
       </main>
-      <FloatingTutor open={assistantOpen} onOpen={() => setAssistantOpen(true)} onClose={() => setAssistantOpen(false)}
-        topic={topic} context={assistantContext} lang={lang} studentId={favoriteOwnerId} classId={classId}
-        onActivity={() => setLearningRevision((value) => value + 1)} />
     </div>
   )
 }

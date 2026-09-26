@@ -64,8 +64,7 @@ def _collection():
         return _client().get_collection(config.CHROMA_COLLECTION)
     except Exception as exc:
         raise RAGUnavailable(
-            "The packaged MIT Chroma snapshot is missing or incompatible. "
-            "Restore data/chroma from the repository."
+            "MIT Chroma collection is missing. Run: python -m scripts.ingest_mit"
         ) from exc
 
 
@@ -123,15 +122,11 @@ def index_status() -> dict[str, Any]:
     except RAGUnavailable as exc:
         return {"ready": False, "chunks": 0, "detail": str(exc)}
     metadatas = result.get("metadatas") or []
-    section_ids = {item.get("section_id") for item in metadatas if item}
     return {
         "ready": True,
-        "mode": "compact_demo",
         "chunks": collection.count(),
         "collection": config.CHROMA_COLLECTION,
-        "sections": len(section_ids),
-        "rag_sections": sorted(str(item) for item in section_ids if item),
-        "mock_sections": len(textbook.known_section_ids() - section_ids),
+        "sections": len({item.get("section_id") for item in metadatas if item}),
         "content_types": sorted(
             {str(item.get("content_type")) for item in metadatas if item}
         ),
@@ -139,9 +134,11 @@ def index_status() -> dict[str, Any]:
 
 
 def warmup() -> None:
-    """Validate the packaged index without forcing a model download at startup."""
     collection = _collection()
-    collection.count()
+    if collection.count():
+        _embedding_model().encode(
+            ["Calculus 1"], normalize_embeddings=True, show_progress_bar=False
+        )
 
 
 def _where(
@@ -381,19 +378,56 @@ def _figure_payload(
     }
 
 
+def _verified_display_chunks(section_id: str, meta: dict[str, Any]) -> list[dict[str, Any]]:
+    """Learn-page chunks from the curated textbook, whose ids match formula overrides."""
+    rows = [
+        row
+        for row in textbook.load_verified_content()
+        if row.get("section_id") == section_id
+        and row.get("content_type") in ("concept", "example")
+    ]
+    if not rows:
+        return []
+    manifest = textbook.load_manifest()
+    source = f"{manifest['book']} — {manifest['author']}"
+    source_url = manifest["source_url"].split("#", 1)[0]
+    chunks: list[dict[str, Any]] = []
+    for row in sorted(rows, key=lambda item: int(item.get("order", 0))):
+        page = row.get("pdf_page")
+        chunks.append({
+            "id": row["id"],
+            "text": row.get("text", ""),
+            "title": row.get("heading") or meta["display_title"],
+            "section": meta["display_title"],
+            "section_id": section_id,
+            "content_type": row.get("content_type", "concept"),
+            "subtype": row.get("subtype", row.get("content_type", "concept")),
+            "order": int(row.get("order", 0)),
+            "pdf_page": page,
+            "figure_ids": list(row.get("figure_ids") or []),
+            "formulas": list(row.get("formulas") or []),
+            "requires_figure": bool(row.get("figure_ids")),
+            "source": source,
+            "source_url": f"{source_url}#page={page}" if page else source_url,
+        })
+    return chunks
+
+
 def section_page(section_id: str) -> dict[str, Any]:
     """Build a Learn page from ordered concept/example chunks."""
     meta = textbook.get_section(section_id)
     if meta is None:
         raise KeyError(section_id)
-    chunks = get_by_metadata(
-        section_id=section_id,
-        content_types=["concept", "example"],
-    )
+    chunks = _verified_display_chunks(section_id, meta)
+    if not chunks:
+        chunks = get_by_metadata(
+            section_id=section_id,
+            content_types=["concept", "example"],
+        )
     if not chunks:
         raise RAGUnavailable(
             f"No indexed text for {meta['display_title']}. "
-            "Restore the packaged data/chroma snapshot."
+            "Run: python -m scripts.ingest_mit"
         )
     text_overrides = _presentation_data("text_overrides.json")
     chunks = [{**chunk, "text": text_overrides.get(chunk["id"], chunk["text"])} for chunk in chunks]
@@ -449,7 +483,7 @@ def section_page(section_id: str) -> dict[str, Any]:
         if not int(meta["pdf_page_start"]) <= page <= int(meta["pdf_page_end"]):
             continue
         figure = _figure_payload(figure_id, printed_page({"pdf_page": page}))
-        if not figure or not figure["available"]:
+        if not figure:
             continue
         content.append({
             "id": "illustration-" + figure_id, "content_type": "concept",
@@ -490,11 +524,18 @@ def section_page(section_id: str) -> dict[str, Any]:
 
 
 def concept_card(topic: str) -> dict[str, Any]:
-    meta = textbook.resolve_section(topic)
+    meta = textbook.get_section(topic)
+    if meta is None:
+        needle = topic.lower()
+        for _, section in textbook.iter_sections():
+            info = textbook.get_section(section["id"])
+            if info and needle in {
+                info["title"].lower(),
+                info["display_title"].lower(),
+                info["chapter_title"].lower(),
+            }:
+                meta = info
+                break
     if meta is None:
         raise KeyError(topic)
-    if not textbook.is_rag_section(meta["id"]):
-        raise RAGUnavailable(
-            f"{meta['display_title']} uses compact-demo mock content."
-        )
     return section_page(meta["id"])

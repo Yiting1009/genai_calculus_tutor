@@ -7,11 +7,16 @@ Endpoints:
   POST /session/{sid}/message        -> send a student message, get tutor turn
   GET  /session/{sid}                -> current session state
 """
+from __future__ import annotations
+
 import re
 import time
 from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
+from pydantic import BaseModel, Field
+from typing import Literal, Optional
+from . import localization
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -124,7 +129,12 @@ def get_concept(topic: str):
 
 
 @app.get("/retrieve")
-def retrieve_context(query: str, topic: str | None = None, section_id: str | None = None, k: int = 4):
+def retrieve_context(
+    query: str,
+    topic: Optional[str] = None,
+    section_id: Optional[str] = None,
+    k: int = 4,
+):
     """Instructor/debug endpoint; it returns attributed source chunks."""
     try:
         return rag.retrieve(
@@ -153,14 +163,16 @@ def get_learning_recommendation(
 # Teacher analytics (class-level)
 # --------------------------------------------------------------------------- #
 @app.get("/analytics/class", response_model=ClassAnalytics)
-def get_class_analytics(class_id: str | None = None):
+def get_class_analytics(class_id: Optional[str] = None):
     return analytics.compute(class_id)
 
 
 @app.post("/analytics/ask", response_model=AnalyticsAnswer)
 def ask_analytics(req: AnalyticsQuery):
     data = analytics.compute(req.class_id)
-    answer, llm_available = analytics.answer_question(req.question, data, req.language)
+    answer, llm_available = analytics.answer_question(
+        req.question, data, req.language, history=req.history
+    )
     return AnalyticsAnswer(answer=answer, grounded_on=data,
                            llm_available=llm_available)
 
@@ -169,7 +181,7 @@ def ask_analytics(req: AnalyticsQuery):
 # Assignments (teacher -> class)
 # --------------------------------------------------------------------------- #
 @app.get("/assignments", response_model=list[Assignment])
-def get_assignments(class_id: str | None = None):
+def get_assignments(class_id: Optional[str] = None):
     records = assignments.list_assignments()
     return [record for record in records if not class_id or record.class_id == class_id]
 
@@ -190,12 +202,6 @@ def delete_assignment(assignment_id: str):
 @app.post("/generate", response_model=GeneratedQuestionPublic)
 def generate(req: GenerateRequest, background_tasks: BackgroundTasks):
     try:
-        section = textbook.resolve_section(req.topic)
-        if section is not None and not textbook.is_rag_section(section["id"]):
-            raise HTTPException(
-                status_code=503,
-                detail="This compact-demo section uses mock practice data.",
-            )
         question = question_pool.get_or_generate(
             req.type, req.topic, req.difficulty, req.language, req.exclude_stems,
         )
@@ -203,7 +209,6 @@ def generate(req: GenerateRequest, background_tasks: BackgroundTasks):
             question_pool.refill,
             req.type, req.topic, req.difficulty, req.language, 2,
         )
-        return question
     except HTTPException:
         raise
     except KeyError as exc:
@@ -211,6 +216,19 @@ def generate(req: GenerateRequest, background_tasks: BackgroundTasks):
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502,
                             detail=f"Generation failed: {exc}") from exc
+    private = generator.get(question.id) or {}
+    store.log_question({
+        "question_id": question.id,
+        "stem": question.stem,
+        "difficulty": question.difficulty,
+        "difficulty_reason": private.get("difficulty_reason") or {},
+        "reference_ids": private.get("reference_ids") or [],
+        "section_id": question.section_id,
+        "type": question.type,
+        "source": question.source,
+        "hint_usage": None,
+    })
+    return question
 
 
 @app.post("/grade", response_model=GradeResponse)
@@ -226,6 +244,10 @@ def grade(req: GradeRequest):
             "section_id": question.get("section_id") if question else None,
             "source": question.get("source") if question else None,
             "language": question.get("language") if question else None,
+            "difficulty": question.get("difficulty") if question else None,
+            "type": question.get("type") if question else None,
+            "hint_usage": "ai_assisted" if req.ai_assisted else "independent",
+            "ai_assisted": req.ai_assisted,
             "correct": result.correct,
             "attempts": result.attempts,
             "answer_revealed": result.answer_revealed,
@@ -386,3 +408,18 @@ def delete_favorite(
     if not store.remove_favorite(normalized_id, question_id):
         raise HTTPException(status_code=404, detail="Favorite not found")
     return {"removed": True}
+
+
+class LocalizationRequest(BaseModel):
+    texts: list[str] = Field(max_length=100)
+    language: Literal["zh", "en"]
+
+
+@app.post("/localize")
+def localize_content(req: LocalizationRequest):
+    if sum(len(t) for t in req.texts) > 30000:
+        raise HTTPException(413, "Translation request is too large")
+    try:
+        return {"translations": localization.translate_texts(req.texts, req.language)}
+    except Exception:
+        raise HTTPException(503, "Translation is temporarily unavailable")

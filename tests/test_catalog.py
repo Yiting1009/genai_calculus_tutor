@@ -1,4 +1,4 @@
-from backend.textbook import catalog_tree, get_section, is_rag_section
+from backend.textbook import catalog_tree, get_section
 
 
 def test_catalog_includes_expandable_chapter_six():
@@ -16,7 +16,7 @@ def test_section_lookup_uses_mit_numbering():
     assert info["chapter_title"] == "3 Applications of the Derivative"
 
 
-def test_compact_demo_marks_only_three_real_rag_sections():
-    assert is_rag_section("mit-1-1-velocity-and-distance") is True
-    assert is_rag_section("mit-1-3-the-velocity-at-an-instant") is True
-    assert is_rag_section("mit-2-6-limits") is False
+def test_catalog_exposes_all_mit_sections():
+    tree = catalog_tree()
+    assert len(tree["chapters"]) == 8
+    assert sum(len(chapter["sections"]) for chapter in tree["chapters"]) == 51

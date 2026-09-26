@@ -3,8 +3,6 @@ import { useLang } from '../../i18n.jsx'
 import { api } from '../../api.js'
 import { Card, Loading, MockPill, Badge } from '../../components/ui.jsx'
 import { MathText } from '../../components/math.jsx'
-import { getCachedQuestion, loadQuestion } from './questionCache.js'
-import { ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, ChevronDown, ChevronUp, Lightbulb, RotateCcw } from 'lucide-react'
 
 const QTYPES = ['single_choice', 'multiple_choice', 'fill_blank', 'drag_order']
 const DIFFS = ['easy', 'medium', 'hard']
@@ -13,8 +11,7 @@ export default function Practice({
   topic, difficulty, qtype, setDifficulty, setQtype,
   studentId, classId, lang,
   onBackConcept, onStuck, onExplainCorrect, onGetHint, onFirstStep,
-  favorites, favoriteError, onToggleFavorite,
-  onActivity,
+  favorites, onToggleFavorite,
 }) {
   const { t } = useLang()
   const [loading, setLoading] = useState(true)
@@ -23,22 +20,18 @@ export default function Practice({
   const [answer, setAnswer] = useState({})
   const [grade, setGrade] = useState(null)
   const [grading, setGrading] = useState(false)
-  const [favoriteSaving, setFavoriteSaving] = useState(false)
   const [error, setError] = useState(false)
+  const seen = useRef(new Map())
   const requestId = useRef(0)
 
-  const load = (fresh = false) => {
+  const load = () => {
     const id = ++requestId.current
-    const params = { topic, type: qtype, difficulty, language: lang }
-    const cached = getCachedQuestion(params)
-    if (!fresh && cached) {
-      setGrade(null); setAnswer({}); setError(false)
-      setQ(cached); setMock(!!cached._mock); setLoading(false)
-      return
-    }
+    const key = JSON.stringify([topic, qtype, difficulty, lang])
+    const previous = seen.current.get(key) || []
     setLoading(true); setError(false)
-    loadQuestion(params, { fresh }).then((res) => {
+    api.generateQuestion({ type: qtype, topic, difficulty, language: lang, exclude_stems: previous }).then((res) => {
       if (id !== requestId.current) return
+      seen.current.set(key, [...previous, res.stem].slice(-50))
       setGrade(null); setAnswer({})
       setQ(res); setMock(!!res._mock); setLoading(false)
     }).catch(() => {
@@ -55,19 +48,12 @@ export default function Practice({
 
   const isFav = q && favorites.some((f) => f.question_id === q.id)
 
-  const toggleFavorite = async () => {
-    if (!q || favoriteSaving) return
-    setFavoriteSaving(true)
-    await onToggleFavorite(q, isFav)
-    setFavoriteSaving(false)
-  }
-
   const submit = async () => {
     if (!q) return
     setGrading(true)
     const payload = { question_id: q.id, student_id: studentId || 'anon', class_id: classId, ...answer }
     const res = await api.gradeAnswer(payload)
-    setGrade(res); setGrading(false); onActivity?.()
+    setGrade(res); setGrading(false)
   }
 
   const diffLabel = (d) => t('diff_' + d)
@@ -107,9 +93,8 @@ export default function Practice({
 
       {error && <div role="alert" className="grade-box bad">
         {lang === 'zh' ? '暂时无法获取新题，可能是模型不可用或当前题库已练完。请重试或切换题型、难度。' : 'A new question is unavailable. The model may be unreachable or the available exercises exhausted. Retry or change the type or difficulty.'}
-        <button className="btn" onClick={() => load(true)}>{lang === 'zh' ? '重试获取新题' : 'Retry new question'}</button>
+        <button className="btn" onClick={load}>{lang === 'zh' ? '重试获取新题' : 'Retry new question'}</button>
       </div>}
-      {favoriteError && <div role="alert" className="grade-box bad">{favoriteError}</div>}
       {loading ? <Loading rows={2} /> : q && (
         <Card>
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -117,15 +102,15 @@ export default function Practice({
               <Badge level="neutral">{diffLabel(q.difficulty)}</Badge>
               <Badge level="neutral">{qtypeLabel(q.type)}</Badge>
             </div>
-            <button className="btn sm ghost" aria-pressed={isFav} disabled={favoriteSaving} onClick={toggleFavorite}>
-              {isFav ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
-              {favoriteSaving ? t('practice_favorite_saving') : isFav ? t('practice_unfavorite') : t('practice_favorite')}
+            <button className="btn sm ghost" title={studentId ? '' : t('practice_need_name')}
+              disabled={!studentId} onClick={() => onToggleFavorite(q, isFav)}>
+              {isFav ? '★ ' + t('practice_unfavorite') : '☆ ' + t('practice_favorite')}
             </button>
           </div>
 
           <MathText as="p" style={{ fontSize: 15.5, lineHeight: 1.7, margin: '12px 0' }}>{q.stem}</MathText>
           <div className="muted" style={{ fontSize: 12.5 }}>
-            {mock ? t('practice_source_mock') : q.source === 'textbook' ? t('practice_source_textbook') : t('practice_source_generated')}
+            {q.source === 'textbook' ? t('practice_source_textbook') : t('practice_source_generated')}
           </div>
           {q.instructions && <MathText as="div" className="muted" style={{ fontSize: 13, marginTop: 4 }}>{q.instructions}</MathText>}
 
@@ -157,18 +142,18 @@ export default function Practice({
 
       {/* CTA bar */}
       <div className="cta-bar">
-        <button className="btn" onClick={onBackConcept}><ArrowLeft size={17} />{t('practice_back_concept')}</button>
+        <button className="btn" onClick={onBackConcept}>{t('practice_back_concept')}</button>
         <div className="spacer" />
         {grade?.correct ? (
           <>
             <button className="btn" onClick={() => onExplainCorrect(q)}>{t('practice_explain_correct')}</button>
-            <button className="btn primary" onClick={() => load(true)}>{t('practice_next')} <ArrowRight size={17} /></button>
+            <button className="btn primary" onClick={load}>{t('practice_next')} →</button>
           </>
         ) : grade ? (
           <>
-            <button className="btn" onClick={() => onGetHint(q)}><Lightbulb size={17} />{t('practice_get_hint')}</button>
+            <button className="btn" onClick={() => onGetHint(q)}>{t('practice_get_hint')}</button>
             <button className="btn" onClick={() => onFirstStep(q)}>{t('practice_first_step')}</button>
-            <button className="btn" onClick={() => setGrade(null)}><RotateCcw size={17} />{t('practice_retry')}</button>
+            <button className="btn" onClick={() => setGrade(null)}>{t('practice_retry')}</button>
           </>
         ) : (
           <>
@@ -183,7 +168,7 @@ export default function Practice({
   )
 }
 
-function AnswerControls({ q, answer, setAnswer, disabled }) {
+export function AnswerControls({ q, answer, setAnswer, disabled, displayText = value => value }) {
   if (q.type === 'single_choice') {
     return (
       <div className="stack" style={{ gap: 8 }}>
@@ -191,7 +176,7 @@ function AnswerControls({ q, answer, setAnswer, disabled }) {
           <label key={i} className={'opt-row' + (answer.single === i ? ' sel' : '')}>
             <input type="radio" name="single" disabled={disabled} checked={answer.single === i}
               onChange={() => setAnswer({ single: i })} />
-            <MathText>{opt}</MathText>
+            <MathText>{displayText(opt)}</MathText>
           </label>
         ))}
       </div>
@@ -205,7 +190,7 @@ function AnswerControls({ q, answer, setAnswer, disabled }) {
         {(q.options || []).map((opt, i) => (
           <label key={i} className={'opt-row' + (chosen.includes(i) ? ' sel' : '')}>
             <input type="checkbox" disabled={disabled} checked={chosen.includes(i)} onChange={() => toggle(i)} />
-            <MathText>{opt}</MathText>
+            <MathText>{displayText(opt)}</MathText>
           </label>
         ))}
       </div>
@@ -235,9 +220,9 @@ function AnswerControls({ q, answer, setAnswer, disabled }) {
       {order.map((step, i) => (
         <div key={i} className="order-row">
           <span className="order-idx">{i + 1}</span>
-          <MathText style={{ flex: 1 }}>{step}</MathText>
-          <button className="btn sm icon ghost" title="Move up" disabled={disabled || i === 0} onClick={() => move(i, -1)}><ChevronUp size={17} /></button>
-          <button className="btn sm icon ghost" title="Move down" disabled={disabled || i === order.length - 1} onClick={() => move(i, 1)}><ChevronDown size={17} /></button>
+          <MathText style={{ flex: 1 }}>{displayText(step)}</MathText>
+          <button className="btn sm ghost" disabled={disabled || i === 0} onClick={() => move(i, -1)}>↑</button>
+          <button className="btn sm ghost" disabled={disabled || i === order.length - 1} onClick={() => move(i, 1)}>↓</button>
         </div>
       ))}
     </div>

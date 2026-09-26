@@ -34,6 +34,6 @@ def test_practice_submission_appears_in_teacher_topic_stats(monkeypatch, tmp_pat
 
     result = analytics.compute("demo")
     assert result.n_students == 1
-    assert len(result.by_topic) == 1
-    assert result.by_topic[0].attempts == 1
-    assert result.by_topic[0].solve_rate == 0
+    assert result.practice["n_answers"] == 2
+    assert result.practice["practice_by_topic"][0]["attempts"] == 2
+    assert result.practice["practice_by_topic"][0]["correct_rate"] == 0.5

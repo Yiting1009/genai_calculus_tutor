@@ -4,6 +4,8 @@ Sessions live in memory (fine for a single-process demo). Every turn is also
 appended to data/logs/<session_id>.jsonl so the explanation/justification data
 can be analysed offline -- this is what feeds the planned empirical study.
 """
+from __future__ import annotations
+
 import json
 import threading
 import time
@@ -78,6 +80,14 @@ def log_turn(session: Session, student_text: str, turn_payload: dict,
 def log_practice(payload: dict) -> None:
     """Append privacy-minimal practice events to a shared JSONL stream."""
     log_activity("practice_grade", payload)
+
+
+def log_question(payload: dict) -> None:
+    """Append a generated-question record for later difficulty calibration."""
+    record = {"ts": time.time(), "event": "question_generated", "hint_usage": None, **payload}
+    path = config.LOG_DIR / "questions.jsonl"
+    with open(path, "a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def log_activity(event: str, payload: dict) -> None:

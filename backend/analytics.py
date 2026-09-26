@@ -14,10 +14,12 @@ Design notes (following the review feedback):
 
 Reads data/logs/*.jsonl, which store.py appends to per session.
 """
+from __future__ import annotations
+
 import json
 import logging
 from collections import defaultdict
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from . import config, textbook
 from .schemas import AnalyticsInsight, ClassAnalytics, TopicStat
@@ -30,6 +32,13 @@ _ASSESSMENT_LEVELS = ["none", "weak", "partial", "adequate", "strong"]
 # Heuristic thresholds for gaming / low-effort behaviour.
 _FAST_TURN_MS = 1500          # replies faster than this look like rushing
 _SHORT_EXPLANATION_WORDS = 2  # "idk", "yes", single tokens
+
+
+def _student_account(value: str | None) -> str | None:
+    student_id = (value or "").strip()
+    if not student_id or student_id.lower() == "anon":
+        return None
+    return student_id
 
 
 def _load_events() -> List[dict]:
@@ -80,49 +89,122 @@ def compute(class_id: str | None = None) -> ClassAnalytics:
                 aliases[name] = info["display_title"]
     events = [{**e, "topic": aliases.get(e.get("section_id") or e.get("topic"), e.get("topic"))} for e in events]
     result = _compute_events(events)
-    # First submission per student/question: retries must not inflate accuracy.
-    first = {}
-    for e in sorted(events, key=lambda e: e.get("ts", 0)):
-        if e.get("event") == "practice_grade":
-            first.setdefault((e.get("class_id"), e.get("student_id"), e.get("question_id")), e)
-    buckets = defaultdict(list)
-    for e in first.values():
-        buckets[e.get("topic") or "General / Free chat"].append(e)
-    result.practice = [{"session": topic, "total": len(rows),
-                        "solved": sum(bool(e.get("correct")) for e in rows),
-                        "avg_time": "—"} for topic, rows in sorted(buckets.items())]
+    practice = _compute_practice(events)
+    result.practice = practice
+    result.practice_submission_count = practice["n_answers"]
+    result.independent_solve_rate = practice["independent_solve_rate"]
+    result.ai_assisted_solve_rate = practice["ai_assisted_solve_rate"]
 
-    # Independent practice is part of the same learning picture. Merge first
-    # submissions into topic rows so the teacher sees a student's answer on the
-    # next dashboard refresh, while keeping the tutor-only KPI unchanged.
-    by_topic = {row.topic: row for row in result.by_topic}
-    for topic, rows in buckets.items():
-        practice_attempts = len(rows)
-        practice_solved = sum(bool(e.get("correct")) for e in rows)
-        existing = by_topic.get(topic)
-        if existing:
-            total = existing.attempts + practice_attempts
-            existing.solve_rate = round(
-                (existing.solve_rate * existing.attempts + practice_solved) / total, 2
-            )
-            existing.attempts = total
-        else:
-            by_topic[topic] = TopicStat(
-                topic=topic,
-                attempts=practice_attempts,
-                avg_reasoning=0.0,
-                solve_rate=round(practice_solved / practice_attempts, 2),
-                avg_final_mastery=0.0,
-                gaming_rate=0.0,
-            )
-    result.by_topic = sorted(by_topic.values(), key=lambda row: row.topic)
-    active_students = {
-        e.get("student_id") for e in events
-        if e.get("event") in {"turn", "practice_grade"}
-        and e.get("student_id") not in {None, "", "anon"}
+    practice_students = {
+        student_id
+        for e in events
+        if e.get("event") == "practice_grade"
+        for student_id in [_student_account(e.get("student_id"))]
+        if student_id is not None
     }
-    result.n_students = len(active_students)
+    if practice_students:
+        result.n_students = max(result.n_students, len(practice_students))
     return result
+
+
+def _compute_practice(events: List[dict]) -> dict:
+    rows = [e for e in events if e.get("event") == "practice_grade"]
+    assisted_keys = {
+        (e.get("class_id"), (e.get("student_id") or "anon").strip() or "anon", e.get("problem_id"))
+        for e in events
+        if e.get("event") == "session_start" and e.get("problem_id") not in (None, "free")
+    }
+
+    by_topic: Dict[str, dict] = defaultdict(
+        lambda: {
+            "attempts": 0,
+            "correct": 0,
+            "independent_count": 0,
+            "ai_assisted_count": 0,
+            "not_correct_count": 0,
+        }
+    )
+    by_difficulty: Dict[str, dict] = defaultdict(
+        lambda: {
+            "attempts": 0,
+            "independent_count": 0,
+            "ai_assisted_count": 0,
+            "not_correct_count": 0,
+        }
+    )
+
+    for e in rows:
+        student_id = _student_account(e.get("student_id")) or "anon"
+        key = (e.get("class_id"), student_id, e.get("question_id"))
+        assisted = (
+            bool(e.get("ai_assisted"))
+            or e.get("hint_usage") == "ai_assisted"
+            or key in assisted_keys
+        )
+        correct = bool(e.get("correct"))
+        topic = e.get("topic") or "General / Free chat"
+        difficulty = e.get("difficulty") or "unknown"
+
+        for bucket in (by_topic[topic], by_difficulty[difficulty]):
+            bucket["attempts"] += 1
+            if assisted:
+                bucket["ai_help_count"] = bucket.get("ai_help_count", 0) + 1
+            if correct:
+                bucket["correct"] = bucket.get("correct", 0) + 1
+                if assisted:
+                    bucket["ai_assisted_count"] += 1
+                else:
+                    bucket["independent_count"] += 1
+            else:
+                bucket["not_correct_count"] += 1
+
+    def enrich(bucket: dict) -> dict:
+        attempts = bucket["attempts"]
+        independent_count = bucket["independent_count"]
+        ai_assisted_count = bucket["ai_assisted_count"]
+        not_correct_count = bucket["not_correct_count"]
+        ai_help_count = bucket.get("ai_help_count", 0)
+        correct_count = independent_count + ai_assisted_count
+        return {
+            **bucket,
+            "correct_rate": round(correct_count / attempts, 3) if attempts else 0.0,
+            "ai_help_rate": round(ai_help_count / attempts, 3) if attempts else 0.0,
+            "independent_rate": round(independent_count / attempts, 3) if attempts else 0.0,
+            "ai_assisted_rate": round(ai_assisted_count / attempts, 3) if attempts else 0.0,
+            "not_correct_rate": round(not_correct_count / attempts, 3) if attempts else 0.0,
+        }
+
+    topic_rows = [
+        {"topic": topic, **enrich(bucket)}
+        for topic, bucket in sorted(by_topic.items())
+    ]
+    difficulty_rows = [
+        {"difficulty": difficulty, **enrich(bucket)}
+        for difficulty, bucket in sorted(by_difficulty.items())
+    ]
+
+    n_answers = len(rows)
+    independent_correct = sum(row["independent_count"] for row in topic_rows)
+    ai_assisted_correct = sum(row["ai_assisted_count"] for row in topic_rows)
+    ai_help_count = sum(row.get("ai_help_count", 0) for row in topic_rows)
+    not_correct = sum(row["not_correct_count"] for row in topic_rows)
+    correct_total = independent_correct + ai_assisted_correct
+
+    return {
+        "n_answers": n_answers,
+        "correct_rate": round(correct_total / n_answers, 3) if n_answers else 0.0,
+        "ai_help_count": ai_help_count,
+        "ai_help_rate": round(ai_help_count / n_answers, 3) if n_answers else 0.0,
+        "independent_solve_rate": round(independent_correct / n_answers, 3) if n_answers else 0.0,
+        "ai_assisted_solve_rate": round(ai_assisted_correct / n_answers, 3) if n_answers else 0.0,
+        "practice_completion_modes": [
+            {"mode": "independent", "count": independent_correct},
+            {"mode": "ai_assisted", "count": ai_assisted_correct},
+            {"mode": "not_correct", "count": not_correct},
+        ],
+        "by_difficulty_completion": difficulty_rows,
+        "practice_by_topic": topic_rows,
+    }
 
 
 def _compute_events(events) -> ClassAnalytics:
@@ -161,7 +243,9 @@ def _compute_events(events) -> ClassAnalytics:
 
     for sid, turns in turns_by_session.items():
         info = meta.get(sid, {})
-        students.add(info.get("student_id", "anon"))
+        student_account = _student_account(info.get("student_id"))
+        if student_account:
+            students.add(student_account)
         pid = info.get("problem_id", "free")
         topic = info.get("topic") or topic_of.get(pid, "General / Free chat")
 
@@ -336,7 +420,12 @@ def build_insights(a: ClassAnalytics) -> List[AnalyticsInsight]:
     return insights
 
 
-def answer_question(question: str, a: ClassAnalytics, language: str = "en") -> Tuple[str, bool]:
+def answer_question(
+    question: str,
+    a: ClassAnalytics,
+    language: str = "en",
+    history: Optional[List[dict]] = None,
+) -> Tuple[str, bool]:
     """LLM-backed Q&A grounded on the aggregate stats.
 
     Returns (answer, llm_available). When the model can't be reached we still
@@ -345,15 +434,19 @@ def answer_question(question: str, a: ClassAnalytics, language: str = "en") -> T
     reply to every question with no hint that the model was down.
     """
     facts = _facts_block(a)
+    chat_context = _chat_context(history or [])
     try:
         from . import llm
         prompt = (
             "You are a teaching assistant helping a Calculus 1 instructor "
-            "interpret CLASS-LEVEL analytics. Use ONLY the facts provided; do "
-            "not invent numbers. Answer in 2-4 short sentences, focused on "
-            "actionable teaching advice. If the facts don't cover the question, "
-            "say so briefly.\n\n"
+            "interpret CLASS-LEVEL analytics and plan teaching actions. The "
+            "teacher may ask follow-up questions conversationally. Use ONLY "
+            "the facts provided when mentioning class data; do not invent "
+            "numbers. If the teacher asks for general teaching advice, make it "
+            "practical and label it as a suggestion rather than a measured "
+            "finding. Answer in 2-5 short sentences.\n\n"
             f"CLASS FACTS:\n{facts}\n\n"
+            f"RECENT CHAT:\n{chat_context}\n\n"
             f"TEACHER QUESTION: {question}\n\nAnswer:"
         )
         answer = llm.chat(
@@ -367,6 +460,17 @@ def answer_question(question: str, a: ClassAnalytics, language: str = "en") -> T
     except Exception as exc:  # noqa: BLE001
         log.warning("Analytics assistant falling back to rules: %s", exc)
     return _fallback_answer(a, language), False
+
+
+def _chat_context(history: List[dict], limit: int = 6) -> str:
+    rows = []
+    for msg in history[-limit:]:
+        role = msg.get("role")
+        content = (msg.get("content") or "").strip()
+        if role in {"user", "assistant"} and content:
+            speaker = "Teacher" if role == "user" else "Assistant"
+            rows.append(f"{speaker}: {content[:800]}")
+    return "\n".join(rows) if rows else "(no previous messages)"
 
 
 def _facts_block(a: ClassAnalytics) -> str:

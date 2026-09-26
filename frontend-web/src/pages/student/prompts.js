@@ -1,6 +1,9 @@
-/* Suggested prompts for each tutor stage and dialogue state. */
+/* Suggested prompts logic — ported from frontend/quick_prompts.py + presets.py.
+   Decides which prompt buttons to show based on the tutor stage/state, and
+   maps each button to the actual text sent to the tutor. */
 
-// Preset message bodies stay in English; button labels are translated separately.
+// Preset message bodies (what actually gets sent). Kept in English so the
+// tutor model behaves the same as the streamlit version; button labels are i18n'd.
 export const PRESETS = {
   explain_concept: (topic) => `Please explain the concept of ${topic || 'this topic'}: what problem it solves, and give a simple example.`,
   give_example: (topic) => `Give me one simple worked example for ${topic || 'this topic'}.`,
