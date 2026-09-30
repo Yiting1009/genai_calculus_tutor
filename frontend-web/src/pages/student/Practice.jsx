@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from '../../i18n.jsx'
 import { api } from '../../api.js'
-import { Card, Loading, MockPill, Badge } from '../../components/ui.jsx'
+import { Card, Loading, Badge } from '../../components/ui.jsx'
 import { MathText } from '../../components/math.jsx'
 
 const QTYPES = ['single_choice', 'multiple_choice', 'fill_blank', 'drag_order']
@@ -16,7 +16,6 @@ export default function Practice({
   const { t } = useLang()
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState(null)
-  const [mock, setMock] = useState(false)
   const [answer, setAnswer] = useState({})
   const [grade, setGrade] = useState(null)
   const [grading, setGrading] = useState(false)
@@ -33,7 +32,7 @@ export default function Practice({
       if (id !== requestId.current) return
       seen.current.set(key, [...previous, res.stem].slice(-50))
       setGrade(null); setAnswer({})
-      setQ(res); setMock(!!res._mock); setLoading(false)
+      setQ(res); setLoading(false)
     }).catch(() => {
       if (id !== requestId.current) return
       setLoading(false); setError(true)
@@ -67,7 +66,6 @@ export default function Practice({
           <h2 className="section-head">{t('practice_heading')}</h2>
           <p className="muted" style={{ margin: '4px 0 0' }}>{topic}</p>
         </div>
-        <MockPill show={mock} />
       </div>
 
       {/* difficulty + type controls */}

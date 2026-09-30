@@ -1,8 +1,8 @@
 /* ------------------------------------------------------------------
    API layer — talks to the existing FastAPI backend.
    In dev, Vite proxies /api -> http://localhost:8000 (see vite.config.js).
-   If the backend is unreachable, we fall back to demo data so the UI
-   still renders — controlled by the returned `._mock` flag.
+   Teacher preview screens can fall back to demo summaries. Student
+   learning APIs never substitute mock textbook, question, or activity data.
 
    The backend (see backend/schemas.py) returns a different shape than the
    UI components want, so every response goes through a `normalize*` step
@@ -211,8 +211,7 @@ export const api = {
   /* ---------------- Student side ---------------- */
 
   // GET /classes -> [{ id, label }]
-  getClasses: () =>
-    withFallback(async () => ({ classes: await req('/classes') }), { classes: MOCK.classes }),
+  getClasses: async () => ({ classes: await req('/classes') }),
 
   // GET /catalog -> CatalogResponse (chapters -> sections)
   getCatalog: () => req('/catalog'),
@@ -226,41 +225,28 @@ export const api = {
 
   // POST /grade { question_id, single|multiple|blanks|order, student_id, class_id } -> GradeResponse
   gradeAnswer: (payload) =>
-    withFallback(
-      async () => await req('/grade', { method: 'POST', body: JSON.stringify(payload) }),
-      MOCK.grade(payload),
-    ),
+    req('/grade', { method: 'POST', body: JSON.stringify(payload) }),
 
   // POST /session/start -> { session_id, problem, condition, opening_message }
   startSession: (body) =>
-    withFallback(
-      async () => await req('/session/start', { method: 'POST', body: JSON.stringify(body) }),
-      { session_id: 'demo-' + Date.now(), problem: null, condition: body.condition || 'explain',
-        opening_message: MOCK.tutorOpening(body.topic) },
-    ),
+    req('/session/start', { method: 'POST', body: JSON.stringify(body) }),
 
   // POST /session/{sid}/message { text, language } -> TutorTurn
-  sendMessage: (sid, text, language, state) =>
-    withFallback(
-      async () => await req(`/session/${sid}/message`, { method: 'POST', body: JSON.stringify({ text, language }) }),
-      MOCK.tutorReply(text, state),
-    ),
+  sendMessage: (sid, text, language) =>
+    req(`/session/${sid}/message`, { method: 'POST', body: JSON.stringify({ text, language }) }),
 
   // GET /favorites?student_id= -> [Favorite]
-  getFavorites: (studentId) =>
-    withFallback(
-      async () => ({ favorites: await req('/favorites?student_id=' + encodeURIComponent(studentId)) }),
-      { favorites: MOCK.favorites },
-    ),
+  getFavorites: async (studentId) => ({
+    favorites: await req('/favorites?student_id=' + encodeURIComponent(studentId)),
+  }),
 
   // POST /favorites { student_id, class_id, question_id } -> Favorite
   addFavorite: (body) =>
-    req('/favorites', { method: 'POST', body: JSON.stringify(body) }).catch(() => ({ ...body, _mock: true })),
+    req('/favorites', { method: 'POST', body: JSON.stringify(body) }),
 
   // DELETE /favorites/{qid}?student_id=
   deleteFavorite: (questionId, studentId) =>
-    req(`/favorites/${questionId}?student_id=` + encodeURIComponent(studentId), { method: 'DELETE' })
-      .catch(() => ({ removed: true, _mock: true })),
+    req(`/favorites/${questionId}?student_id=` + encodeURIComponent(studentId), { method: 'DELETE' }),
 }
 
 // No demo fallback for translations: never present unrelated text as a translation.

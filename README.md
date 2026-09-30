@@ -37,7 +37,7 @@ GenAI_Calculus_Tutor/
 ├── frontend-web/            # Vite + React (current UI)
 ├── frontend/                # Streamlit prototype (not used at runtime)
 ├── data/textbook/mit-calculus/
-├── data/chroma/             # generated index (gitignored)
+├── data/chroma/             # bundled MIT Calculus vector index
 ├── data/logs/               # session JSONL (gitignored)
 ├── scripts/                 # ingest, seed, smoke tests
 ├── tests/
@@ -166,4 +166,5 @@ python -m scripts.test_generation
 ## Textbook attribution
 
 Excerpts from Gilbert Strang's *Calculus*, MIT OpenCourseWare, CC BY-NC-SA 4.0
-(Fall 2017, chapters 1–8). Parsed assets and the Chroma index are not committed.
+(Fall 2017, chapters 1–8). The curated parsed assets and Chroma index are bundled
+so a fresh clone can use the RAG features without running ingestion first.

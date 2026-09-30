@@ -33,7 +33,7 @@ GenAI_Calculus_Tutor/
 ├── frontend-web/            # Vite + React（现行界面）
 ├── frontend/                # Streamlit 原型（运行时不用）
 ├── data/textbook/mit-calculus/
-├── data/chroma/             # 本地向量索引（不提交）
+├── data/chroma/             # 已随仓库提供的 MIT 微积分向量索引
 ├── data/logs/               # 会话 JSONL（不提交）
 ├── scripts/
 ├── tests/
@@ -161,4 +161,5 @@ python -m scripts.test_generation
 ## 教材授权
 
 内容来自 Gilbert Strang《Calculus》，MIT OpenCourseWare，CC BY-NC-SA 4.0
-（Fall 2017，第 1–8 章）。解析结果和 Chroma 索引不提交到仓库。
+（Fall 2017，第 1–8 章）。经整理的解析结果和 Chroma 索引已随仓库提供，
+全新克隆后无需先运行导入即可使用 RAG 功能。
