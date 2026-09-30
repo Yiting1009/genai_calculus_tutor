@@ -6,8 +6,8 @@
 Strang 的 *Calculus* 学习：读带出处的概念页、做教材题或生成题，并与苏格拉底式
 导师对话（引导推理、不直接给答案）。教师从同一份交互日志看班级汇总。
 
-技术栈：**FastAPI（后端）+ Vite/React（学生端）+ Streamlit（教师端）**。
-两个前端通过角色切换入口相互跳转。
+技术栈：**FastAPI（后端）+ Vite/React（学生端与教师端）**。
+角色切换留在同一个快速 Web 客户端内完成。
 
 ---
 
@@ -17,7 +17,7 @@ Strang 的 *Calculus* 学习：读带出处的概念页、做教材题或生成�
 
 - **学生：** 教材目录、概念页、自由练习 / 闯关、题下导师、收藏。支持中英文；
   教材正文可随界面语言显示。
-- **教师：** 总览、诊断、布置、助手。图表用 Altair。
+- **教师：** 班级总览、薄弱知识点提醒、布置练习、浮动数据助手。
 
 导师仍支持两种条件（`explain` / `control`）。explain-to-unlock 要求先解释再给
 下一步提示；control 只做渐进提示。两边用同一套评分。每轮写入
@@ -30,8 +30,8 @@ Strang 的 *Calculus* 学习：读带出处的概念页、做教材题或生成�
 ```
 GenAI_Calculus_Tutor/
 ├── backend/                 # FastAPI：RAG、出题判分、导师、分析
-├── frontend-web/            # Vite + React 学生端
-├── frontend/                # Streamlit 教师端
+├── frontend-web/            # Vite + React 学生端与教师端
+├── frontend/                # 旧 Streamlit 页面，保留作参考
 ├── data/textbook/mit-calculus/
 ├── data/chroma/             # 已随仓库提供的 MIT 微积分向量索引
 ├── data/logs/               # 会话 JSONL（不提交）
@@ -81,7 +81,16 @@ npm install
 
 ## 运行
 
-需要三个终端，均从仓库根目录开始。只有三个服务全部运行，角色切换才能正常工作。
+从仓库根目录运行一个命令即可同时启动后端和 React 前端：
+
+```bash
+bash run_calcpilot.sh
+```
+
+打开 http://127.0.0.1:5175（或以 Vite 打印的端口为准）。在设置菜单中切换
+**教师 / 学生**；两个视图都由同一个 React 应用提供。
+
+如果想手动分开启动：
 
 **终端 1 — 后端：**
 
@@ -93,7 +102,7 @@ python -m uvicorn backend.main:app --reload --reload-dir backend --host 127.0.0.
 `127.0.0.1`，不要用 `localhost`（Node 18+ 可能把 `localhost` 解析成 IPv6，
 而 uvicorn 只听 IPv4）。
 
-**终端 2 — 学生端：**
+**终端 2 — React 前端：**
 
 ```bash
 cd frontend-web
@@ -107,15 +116,6 @@ cd frontend-web
 $env:VITE_BACKEND_URL="http://127.0.0.1:8000"
 npm run dev
 ```
-
-**终端 3 — 教师端：**
-
-```bash
-python -m streamlit run frontend/teacher_app.py --server.port 8502 --server.address 127.0.0.1
-```
-
-打开 http://127.0.0.1:5175（或以 Vite 打印的端口为准）。在设置菜单中切换
-**教师 / 学生**。教师端地址为 http://127.0.0.1:8502。
 
 后端未启动时，教师页可能出现 `● demo data`。翻译接口（`POST /localize`）
 不会用演示文案冒充译文，失败会直接报错。

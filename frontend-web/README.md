@@ -1,9 +1,8 @@
 # frontend-web
 
-Vite + React client for the student workspace. KaTeX renders mathematics.
-The role switch opens the Streamlit teacher dashboard on port 8502.
-
-Both frontends are current and share the same FastAPI backend.
+Vite + React client for both the student workspace and teacher dashboard.
+KaTeX renders mathematics. The role switch stays inside this app and uses the
+same FastAPI backend for both roles.
 
 ## Run
 
@@ -19,12 +18,6 @@ Then:
 cd frontend-web
 npm install
 npx vite --host 127.0.0.1
-```
-
-Start the teacher dashboard from the repository root in a third terminal:
-
-```bash
-python -m streamlit run frontend/teacher_app.py --server.port 8502 --server.address 127.0.0.1
 ```
 
 PowerShell:
@@ -46,7 +39,9 @@ IPv4 uvicorn.
 frontend-web/
 ├── vite.config.js              # /api and /textbook-assets → 127.0.0.1:8000
 ├── src/
-│   ├── App.jsx                 # student app and teacher-dashboard redirect
+│   ├── App.jsx                 # role switch, student app, teacher app
+│   ├── pages/Overview.jsx      # teacher class overview
+│   ├── pages/Assign.jsx        # teacher assignment builder
 │   ├── pages/StudentWorkspace.jsx
 │   └── pages/student/
 ```
