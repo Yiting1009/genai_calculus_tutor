@@ -1,10 +1,9 @@
 # frontend-web
 
-Vite + React client for **both** the student workspace and the teacher dashboard.
-KaTeX renders mathematics; ECharts renders teacher charts.
+Vite + React client for the student workspace. KaTeX renders mathematics.
+The role switch opens the Streamlit teacher dashboard on port 8502.
 
-This is the current UI. Do not start Streamlit under `frontend/` unless you
-are looking at the old prototype.
+Both frontends are current and share the same FastAPI backend.
 
 ## Run
 
@@ -22,6 +21,12 @@ npm install
 npx vite --host 127.0.0.1
 ```
 
+Start the teacher dashboard from the repository root in a third terminal:
+
+```bash
+python -m streamlit run frontend/teacher_app.py --server.port 8502 --server.address 127.0.0.1
+```
+
 PowerShell:
 
 ```powershell
@@ -29,11 +34,10 @@ $env:VITE_BACKEND_URL="http://127.0.0.1:8000"
 npm run dev
 ```
 
-Open http://127.0.0.1:5175. Switch **Teacher / Student** at the bottom of the
-sidebar. Use `127.0.0.1` rather than `localhost` on Windows so the `/api` proxy
-hits IPv4 uvicorn.
+Open http://127.0.0.1:5175. Switch **Teacher / Student** from the settings menu.
+Use `127.0.0.1` rather than `localhost` on Windows so the `/api` proxy hits
+IPv4 uvicorn.
 
-If the backend is unreachable, teacher pages fall back to demo data (`● demo data`).
 `POST /localize` has no demo fallback.
 
 ## Layout
@@ -42,11 +46,7 @@ If the backend is unreachable, teacher pages fall back to demo data (`● demo d
 frontend-web/
 ├── vite.config.js              # /api and /textbook-assets → 127.0.0.1:8000
 ├── src/
-│   ├── App.jsx                 # role switch, teacher routes
+│   ├── App.jsx                 # student app and teacher-dashboard redirect
 │   ├── pages/StudentWorkspace.jsx
-│   ├── pages/student/
-│   ├── pages/Overview.jsx      # teacher
-│   ├── pages/Diagnose.jsx
-│   ├── pages/Assign.jsx
-│   └── pages/Assistant.jsx
+│   └── pages/student/
 ```

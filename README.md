@@ -8,19 +8,19 @@ practise on textbook or generated items, and talk to a Socratic tutor that
 asks for reasoning instead of revealing the answer. Instructors see class-level
 analytics from the same interaction log.
 
-Built with **FastAPI** (backend) and **Vite + React** (student and teacher in
-one app). The older Streamlit files under `frontend/` are not the current UI.
+Built with **FastAPI** (backend), **Vite + React** (student workspace), and
+**Streamlit** (teacher dashboard). The role switch connects the two frontends.
 
 ---
 
 ## Student and teacher views
 
-One app, switched in the sidebar:
+Two coordinated views, switched from either view's settings menu:
 
 - **Student:** textbook contents, concept page, free practice / challenge mode,
   in-question tutor, and favourites. Chinese/English toggle; textbook prose can
   follow the UI language.
-- **Teacher:** Overview, Diagnose, Assign, Assistant. Charts use ECharts.
+- **Teacher:** Overview, Diagnose, Assign, Assistant. Charts use Altair.
 
 The tutor still supports two conditions (`explain` vs `control`). Explain-to-unlock
 requires a justification before the next hint; control gives progressive hints
@@ -34,8 +34,8 @@ without that gate. Both are scored the same way. Turns are logged to
 ```
 GenAI_Calculus_Tutor/
 ├── backend/                 # FastAPI: RAG, generate/grade, tutor, analytics
-├── frontend-web/            # Vite + React (current UI)
-├── frontend/                # Streamlit prototype (not used at runtime)
+├── frontend-web/            # Vite + React student workspace
+├── frontend/                # Streamlit teacher dashboard
 ├── data/textbook/mit-calculus/
 ├── data/chroma/             # bundled MIT Calculus vector index
 ├── data/logs/               # session JSONL (gitignored)
@@ -86,7 +86,8 @@ npm install
 
 ## Run
 
-Two terminals, from the repo root.
+Three terminals, from the repo root. All three services are required for role
+switching to work.
 
 **Terminal 1 — backend:**
 
@@ -98,7 +99,7 @@ python -m uvicorn backend.main:app --reload --reload-dir backend --host 127.0.0.
 Use `127.0.0.1`, not `localhost`, on Windows (Node 18+ may resolve `localhost`
 to IPv6 while uvicorn listens on IPv4).
 
-**Terminal 2 — frontend:**
+**Terminal 2 — student frontend:**
 
 ```bash
 cd frontend-web
@@ -113,8 +114,14 @@ $env:VITE_BACKEND_URL="http://127.0.0.1:8000"
 npm run dev
 ```
 
+**Terminal 3 — teacher frontend:**
+
+```bash
+python -m streamlit run frontend/teacher_app.py --server.port 8502 --server.address 127.0.0.1
+```
+
 Open http://127.0.0.1:5175 (or the port Vite prints). Switch **Teacher / Student**
-at the bottom of the sidebar.
+from the settings menu. The teacher dashboard opens at http://127.0.0.1:8502.
 
 If the backend is down, teacher pages may show a `● demo data` badge. Translation
 requests (`POST /localize`) do not use demo text: they fail visibly instead.
